@@ -1,0 +1,16 @@
+{
+  "id": "gestoria",
+  "module_version": "1.0.0",
+  "display_name": "Gestoría",
+  "description": "Servicios recurrentes de gestión administrativa, fiscal y laboral.",
+  "services": [
+    { "id": "gestoria-contabilidad", "name": "Gestión contable mensual", "description": "Registro y revisión periódica de la contabilidad del cliente.", "minimum_tier": "basic" },
+    { "id": "gestoria-fiscal", "name": "Obligaciones fiscales", "description": "Preparación y seguimiento de las obligaciones fiscales recurrentes.", "minimum_tier": "basic" },
+    { "id": "gestoria-laboral", "name": "Gestión laboral", "description": "Soporte para nóminas, contratos y gestiones laborales.", "minimum_tier": "premium" },
+    { "id": "gestoria-consulta-prioritaria", "name": "Consulta prioritaria", "description": "Atención preferente para consultas de gestión y trámites.", "minimum_tier": "premium" }
+  ],
+  "plans": [
+    { "id": "gestoria-basic", "name": "Gestoría Básica", "description": "Contabilidad y obligaciones fiscales esenciales.", "amount_cents": 3900, "currency": "EUR", "interval": "month", "tier": "basic" },
+    { "id": "gestoria-premium", "name": "Gestoría Premium", "description": "Servicios básicos, gestión laboral y consultas prioritarias.", "amount_cents": 8900, "currency": "EUR", "interval": "month", "tier": "premium" }
+  ]
+}

@@ -23,6 +23,7 @@ class Settings:
         self.local_file_storage_path = os.getenv("LOCAL_FILE_STORAGE_PATH", "./data/files")
         self.local_auth_enabled = os.getenv("LOCAL_AUTH_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
         self.payment_provider = os.getenv("PAYMENT_PROVIDER", "local")
+        self.vertical_module = os.getenv("APP_VERTICAL_MODULE", "maintenance")
         self.aws_region = os.getenv("AWS_REGION")
         self.secrets_manager_secret_name = os.getenv("SECRETS_MANAGER_SECRET_NAME")
         self.secrets_manager_enabled = os.getenv("SECRETS_MANAGER_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
@@ -55,6 +56,7 @@ class Settings:
         self.local_file_storage_path = values.get("LOCAL_FILE_STORAGE_PATH", self.local_file_storage_path)
         self.local_auth_enabled = values.get("LOCAL_AUTH_ENABLED", str(self.local_auth_enabled)).lower() in {"1", "true", "yes", "on"}
         self.payment_provider = values.get("PAYMENT_PROVIDER", self.payment_provider)
+        self.vertical_module = values.get("APP_VERTICAL_MODULE", self.vertical_module)
         self.aws_region = values.get("AWS_REGION", self.aws_region)
         self.secrets_manager_secret_name = values.get("SECRETS_MANAGER_SECRET_NAME", self.secrets_manager_secret_name)
         self.secrets_manager_enabled = values.get("SECRETS_MANAGER_ENABLED", str(self.secrets_manager_enabled)).lower() in {"1", "true", "yes", "on"}

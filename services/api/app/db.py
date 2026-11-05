@@ -5,6 +5,7 @@ from typing import Any
 
 from .config import get_settings
 from .security import hash_password
+from .vertical_module import seed_plans, seed_services
 
 
 SCHEMA = """
@@ -111,18 +112,6 @@ CREATE TABLE IF NOT EXISTS app_metadata (
     value TEXT NOT NULL
 );
 """
-
-
-SEED_SERVICES = [
-    ("service-cleaning", "Mantenimiento preventivo", "Revisión periódica y mantenimiento preventivo de instalaciones.", "basic"),
-    ("service-emergency", "Asistencia prioritaria", "Atención prioritaria para incidencias urgentes.", "premium"),
-    ("service-documentation", "Documentación técnica", "Acceso a informes y documentación técnica del servicio.", "basic"),
-]
-
-SEED_PLANS = [
-    ("plan-basic", "Plan Básico", "Cobertura preventiva esencial.", 1900, "EUR", "month", "basic"),
-    ("plan-pro", "Plan Profesional", "Cobertura preventiva y asistencia prioritaria.", 4900, "EUR", "month", "premium"),
-]
 
 
 def connection() -> sqlite3.Connection:
@@ -239,14 +228,14 @@ def seed(conn: sqlite3.Connection) -> None:
             "SELECT key FROM app_metadata WHERE key LIKE 'deleted-service:%'"
         ).fetchall()
     }
-    services = [service for service in SEED_SERVICES if f"deleted-service:{service[0]}" not in deleted_seed_services]
+    services = [service for service in seed_services() if f"deleted-service:{service[0]}" not in deleted_seed_services]
     conn.executemany(
         "INSERT OR IGNORE INTO services (id, name, description, minimum_tier) VALUES (?, ?, ?, ?)",
         services,
     )
     conn.executemany(
         "INSERT OR IGNORE INTO plans (id, name, description, amount_cents, currency, interval, tier) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        SEED_PLANS,
+        seed_plans(),
     )
     conn.execute(
         "INSERT OR IGNORE INTO customers (id, cognito_sub, name, email) VALUES (?, ?, ?, ?)",

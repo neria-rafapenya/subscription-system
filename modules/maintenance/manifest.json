@@ -1,0 +1,15 @@
+{
+  "id": "maintenance",
+  "module_version": "1.0.0",
+  "display_name": "Mantenimiento",
+  "description": "Servicios recurrentes de mantenimiento preventivo y asistencia técnica.",
+  "services": [
+    { "id": "service-cleaning", "name": "Mantenimiento preventivo", "description": "Revisión periódica y mantenimiento preventivo de instalaciones.", "minimum_tier": "basic" },
+    { "id": "service-emergency", "name": "Asistencia prioritaria", "description": "Atención prioritaria para incidencias urgentes.", "minimum_tier": "premium" },
+    { "id": "service-documentation", "name": "Documentación técnica", "description": "Acceso a informes y documentación técnica del servicio.", "minimum_tier": "basic" }
+  ],
+  "plans": [
+    { "id": "plan-basic", "name": "Plan Básico", "description": "Cobertura preventiva esencial.", "amount_cents": 1900, "currency": "EUR", "interval": "month", "tier": "basic" },
+    { "id": "plan-pro", "name": "Plan Profesional", "description": "Cobertura preventiva y asistencia prioritaria.", "amount_cents": 4900, "currency": "EUR", "interval": "month", "tier": "premium" }
+  ]
+}

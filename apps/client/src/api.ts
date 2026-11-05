@@ -69,6 +69,16 @@ export type AuthUser = {
   email: string;
 };
 
+export type AppConfig = {
+  environment: string;
+  vertical_module: string;
+  vertical_display_name: string;
+  vertical_description: string;
+  local_auth_enabled: boolean;
+  auth_provider: string;
+  payment_provider: string;
+};
+
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';
 let accessToken: string | null = null;
 
@@ -111,6 +121,7 @@ async function errorMessage(response: Response): Promise<string> {
 export const api = {
   setAccessToken: (token: string | null) => { accessToken = token; },
   logout: () => { accessToken = null; },
+  config: () => get<AppConfig>('/config'),
   login: async (email: string, password: string) => {
     const response = await fetch(`${API_URL}/auth/local/login`, {
       method: 'POST',

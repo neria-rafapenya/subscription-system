@@ -1,0 +1,16 @@
+{
+  "id": "bufete",
+  "module_version": "1.0.0",
+  "display_name": "Bufete de abogados",
+  "description": "Servicios recurrentes de asesoramiento jurídico y seguimiento de expedientes.",
+  "services": [
+    { "id": "bufete-consulta", "name": "Consulta jurídica mensual", "description": "Bolsa mensual de consultas jurídicas sobre la actividad del cliente.", "minimum_tier": "basic" },
+    { "id": "bufete-documentos", "name": "Revisión de documentos", "description": "Revisión periódica de contratos y documentos aportados por el cliente.", "minimum_tier": "basic" },
+    { "id": "bufete-plazos", "name": "Seguimiento de plazos", "description": "Control y recordatorio de hitos y plazos de los expedientes.", "minimum_tier": "premium" },
+    { "id": "bufete-prioridad", "name": "Atención jurídica prioritaria", "description": "Canal preferente para asuntos urgentes y consultas complejas.", "minimum_tier": "premium" }
+  ],
+  "plans": [
+    { "id": "bufete-basic", "name": "Bufete Básico", "description": "Consultas y revisión documental esenciales.", "amount_cents": 5900, "currency": "EUR", "interval": "month", "tier": "basic" },
+    { "id": "bufete-premium", "name": "Bufete Premium", "description": "Servicios básicos, seguimiento de plazos y atención prioritaria.", "amount_cents": 12900, "currency": "EUR", "interval": "month", "tier": "premium" }
+  ]
+}

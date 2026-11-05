@@ -12,6 +12,8 @@ El proyecto utiliza tres entornos explícitos:
 
 La variable `APP_ENV` selecciona el entorno del backend. En la aplicación móvil/web se utiliza `EXPO_PUBLIC_APP_ENV`, que se incorpora durante la compilación. En `development` se utiliza un simulador de pago integrado; `integration` usa PayPal Sandbox con cuentas compradoras de prueba y `production` PayPal real.
 
+La variable `APP_VERTICAL_MODULE` selecciona el módulo sectorial cargado por la instalación. Actualmente están disponibles `maintenance`, `gestoria` y `bufete`. El cliente móvil y el backoffice consumen el mismo contrato genérico de servicios, planes y suscripciones; por eso el cambio de sector no requiere editar sus pantallas.
+
 ## Estructura
 
 ```text
@@ -54,3 +56,7 @@ npm --prefix apps/backoffice run dev
 ## Regla de secretos
 
 Los secretos no se guardan en Git. En desarrollo se usan variables locales. En integración y producción se leerán desde AWS Secrets Manager exclusivamente desde el backend.
+
+## Módulos sectoriales
+
+Consulta [docs/modules.md](docs/modules.md) para añadir o intercambiar un módulo sin modificar el núcleo.

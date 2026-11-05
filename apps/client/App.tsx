@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, Image, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
-import { api, AuthUser, environment, Notification, PayPalConfig, PendingCheckout, Plan, Service, Subscription } from './src/api';
+import { api, AppConfig, AuthUser, environment, Notification, PayPalConfig, PendingCheckout, Plan, Service, Subscription } from './src/api';
 import { AppDialog, AppDialogState } from './src/components/AppDialog';
 import { PayPalSubscriptionCheckout } from './src/components/PayPalSubscriptionCheckout';
 import { PolicyModal } from './src/components/PolicyModal';
@@ -16,6 +16,7 @@ export default function App() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [pendingCheckouts, setPendingCheckouts] = useState<PendingCheckout[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
@@ -45,19 +46,21 @@ export default function App() {
   const load = async () => {
     setLoading(true);
     try {
-      const [serviceData, planData, subscriptionData, pendingCheckoutData, notificationData, paypalConfigData] = await Promise.all([
+      const [serviceData, planData, subscriptionData, pendingCheckoutData, notificationData, paypalConfigData, configData] = await Promise.all([
         api.services(),
         api.plans(),
         api.subscriptions(),
         api.pendingCheckouts(),
         api.notifications(),
         api.paypalConfig(),
+        api.config(),
       ]);
       setServices(serviceData);
       setPlans(planData);
       setSubscriptions(subscriptionData);
       setPendingCheckouts(pendingCheckoutData);
       setPaypalConfig(paypalConfigData);
+      setAppConfig(configData);
       if (pendingCheckoutData.length > 0) {
         const pending = pendingCheckoutData[0];
         setCheckoutId(pending.id);
@@ -349,7 +352,7 @@ export default function App() {
           <Text style={styles.title}>{loggedIn ? `Hola, ${user?.name || 'usuario'}` : 'Acceso a la aplicación'}</Text>
           {loggedIn ? <Pressable style={styles.logoutButton} onPress={logout}><Text style={styles.logoutButtonText}>Cerrar sesión</Text></Pressable> : null}
         </View>
-        <Text style={styles.subtitle}>{loggedIn ? 'Servicios y suscripciones.' : 'Puedes crear una cuenta sin contratar ninguna suscripción.'}</Text>
+        <Text style={styles.subtitle}>{appConfig?.vertical_display_name ? `${appConfig.vertical_display_name} · ` : ''}{loggedIn ? (appConfig?.vertical_description || 'Servicios y suscripciones.') : 'Puedes crear una cuenta sin contratar ninguna suscripción.'}</Text>
 
         {message ? <Text style={styles.message}>{message}</Text> : null}
         {!loggedIn ? (

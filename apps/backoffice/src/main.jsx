@@ -345,9 +345,9 @@ function App() {
     <main className="layout">
       <header className="header">
         <div>
-          <p className="eyebrow">SUBSCRIPTION SYSTEM</p>
+          <p className="eyebrow">SUBSCRIPTION SYSTEM · {config?.vertical_module || 'cargando'}</p>
           <h1>Backoffice local</h1>
-          <p className="muted">Área de decisión del motor de suscripciones.</p>
+          <p className="muted">Área de decisión del motor de suscripciones{config?.vertical_display_name ? ` · ${config.vertical_display_name}` : ''}.</p>
         </div>
         <div className="environment">{config?.environment || 'cargando'}</div>
       </header>
@@ -417,7 +417,7 @@ function App() {
 
       <section className="panel notes">
         <h2>Configuración observada</h2>
-        <div className="facts"><span>Entorno</span><strong>{config?.environment || '—'}</strong><span>Autenticación</span><strong>{config?.local_auth_enabled ? 'local' : 'Cognito pendiente'}</strong><span>Pago</span><strong>{config?.payment_provider || '—'}</strong></div>
+        <div className="facts"><span>Entorno</span><strong>{config?.environment || '—'}</strong><span>Módulo sectorial</span><strong>{config?.vertical_display_name || config?.vertical_module || '—'}</strong><span>Autenticación</span><strong>{config?.local_auth_enabled ? 'local' : 'Cognito pendiente'}</strong><span>Pago</span><strong>{config?.payment_provider || '—'}</strong></div>
       </section>
     </main>
   );
