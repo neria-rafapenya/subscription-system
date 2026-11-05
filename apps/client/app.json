@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Subscription System",
+    "slug": "subscription-system",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.subscriptionsystem"
+    },
+    "android": {
+      "package": "com.example.subscriptionsystem"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "subscription-system",
+  "private": true,
+  "scripts": {
+    "client": "npm --prefix apps/client run start",
+    "client:web": "npm --prefix apps/client run web",
+    "backoffice": "npm --prefix apps/backoffice run dev",
+    "format": "npm --prefix apps/client run format && npm --prefix apps/backoffice run format",
+    "test": "npm --prefix apps/client run test && npm --prefix apps/backoffice run test"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "subscription-system-backoffice",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "test": "echo \"Backoffice tests pending\"",
+    "format": "echo \"Backoffice formatting pending\""
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "sweetalert2": "^11.26.25",
+    "vite": "latest"
+  }
+}

@@ -1,0 +1,4 @@
+bucket       = "REPLACE_WITH_INTEGRATION_TERRAFORM_STATE_BUCKET"
+key          = "subscription-system/integration/terraform.tfstate"
+region       = "REPLACE_WITH_STATE_BUCKET_REGION"
+use_lockfile = true

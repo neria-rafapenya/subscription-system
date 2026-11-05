@@ -1,0 +1,426 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import Swal from 'sweetalert2';
+import './styles.css';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
+async function get(path) {
+  const response = await fetch(`${API_URL}${path}`);
+  if (!response.ok) throw new Error(`API error ${response.status}`);
+  return response.json();
+}
+
+async function send(path, method, body) {
+  const response = await fetch(`${API_URL}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(errorBody?.detail || `API error ${response.status}`);
+  }
+  return response.status === 204 ? null : response.json();
+}
+
+async function sendForm(path, method, formData) {
+  const response = await fetch(`${API_URL}${path}`, { method, body: formData });
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(errorBody?.detail || `API error ${response.status}`);
+  }
+  return response.json();
+}
+
+function escapeHtml(value) {
+  return String(value ?? '—').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+}
+
+function formatDate(value) {
+  if (!value) return '—';
+  const normalized = String(value).includes('Z') || String(value).includes('+') ? String(value) : `${value}Z`;
+  return new Date(normalized).toLocaleString('es-ES');
+}
+
+function detailTable(headers, rows) {
+  if (!rows.length) return '<p style="color:#64748b">Sin registros.</p>';
+  return `<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;text-align:left;font-size:13px"><thead><tr>${headers.map((header) => `<th style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td style="padding:8px;border-bottom:1px solid #f1f5f9;vertical-align:top">${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+function FileDropzone({ label, accept, file, onFileChange }) {
+  const inputRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+
+  const selectFile = (files) => {
+    const selected = files?.[0];
+    if (selected) onFileChange(selected);
+  };
+
+  return (
+    <div
+      className={`dropzone${dragging ? ' dropzone-dragging' : ''}`}
+      onClick={() => inputRef.current?.click()}
+      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') inputRef.current?.click(); }}
+      onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
+      onDragOver={(event) => event.preventDefault()}
+      onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
+      onDrop={(event) => { event.preventDefault(); setDragging(false); selectFile(event.dataTransfer.files); }}
+      role="button"
+      tabIndex={0}
+    >
+      <input ref={inputRef} type="file" accept={accept} onChange={(event) => selectFile(event.target.files)} />
+      <strong>{file ? file.name : label}</strong>
+      <span>{file ? `${(file.size / 1024 / 1024).toFixed(2)} MB · listo para subir` : 'Arrastra el archivo aquí o haz clic para seleccionarlo'}</span>
+    </div>
+  );
+}
+
+async function updateSubscription(subscriptionId, status) {
+  await send(`/subscriptions/${subscriptionId}/status`, 'PATCH', { status });
+}
+
+function App() {
+  const [services, setServices] = useState([]);
+  const [plans, setPlans] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [config, setConfig] = useState(null);
+  const [error, setError] = useState('');
+  const [editingCustomerId, setEditingCustomerId] = useState(null);
+  const [customerForm, setCustomerForm] = useState({ name: '', email: '', cognito_sub: '' });
+  const [customerPage, setCustomerPage] = useState(1);
+  const [customerTotal, setCustomerTotal] = useState(0);
+  const [customerTotalPages, setCustomerTotalPages] = useState(1);
+  const [customerSort, setCustomerSort] = useState('created_at');
+  const [customerDirection, setCustomerDirection] = useState('desc');
+  const [editingServiceId, setEditingServiceId] = useState(null);
+  const [serviceForm, setServiceForm] = useState({ name: '', description: '', minimum_tier: 'basic', active: true });
+  const [serviceFiles, setServiceFiles] = useState({ image: null, attachment: null });
+
+  const load = async (requestedPage = customerPage, requestedSort = customerSort, requestedDirection = customerDirection) => {
+    try {
+      const [serviceData, planData, customerData, subscriptionData, notificationData, configData] = await Promise.all([
+        get('/services'),
+        get('/plans'),
+        get(`/customers?page=${requestedPage}&page_size=10&sort=${requestedSort}&direction=${requestedDirection}`),
+        get('/subscriptions'),
+        get('/notifications'),
+        get('/config'),
+      ]);
+      setServices(serviceData);
+      setPlans(planData);
+      setCustomers(customerData.items);
+      setCustomerTotal(customerData.total);
+      setCustomerTotalPages(customerData.total_pages);
+      setSubscriptions(subscriptionData);
+      setNotifications(notificationData);
+      setConfig(configData);
+      setError('');
+    } catch (cause) {
+      console.error(cause);
+      setError(`No se pudo conectar con el backend local en ${API_URL}. Comprueba que FastAPI está activo.`);
+    }
+  };
+
+  useEffect(() => { void load(); }, []);
+
+  const changeStatus = async (id, status) => {
+    try {
+      await updateSubscription(id, status);
+      await load();
+    } catch (cause) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: cause instanceof Error ? cause.message : 'No se pudo actualizar la suscripción.' });
+    }
+  };
+
+  const resetCustomerForm = () => {
+    setEditingCustomerId(null);
+    setCustomerForm({ name: '', email: '', cognito_sub: '' });
+  };
+
+  const sortCustomers = (sort) => {
+    const nextDirection = customerSort === sort && customerDirection === 'asc' ? 'desc' : 'asc';
+    setCustomerSort(sort);
+    setCustomerDirection(nextDirection);
+    setCustomerPage(1);
+    void load(1, sort, nextDirection);
+  };
+
+  const goToCustomerPage = (page) => {
+    if (page < 1 || page > customerTotalPages) return;
+    setCustomerPage(page);
+    void load(page, customerSort, customerDirection);
+  };
+
+  const editCustomer = (customer) => {
+    setEditingCustomerId(customer.id);
+    setCustomerForm({ name: customer.name, email: customer.email, cognito_sub: customer.cognito_sub || '' });
+    setError('');
+  };
+
+  const openCustomerDetail = async (customer) => {
+    Swal.fire({ title: 'Cargando cliente…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    try {
+      const detail = await get(`/customers/${customer.id}`);
+      Swal.close();
+      const profile = detail.customer;
+      const profileHtml = `<div style="text-align:left;display:grid;gap:6px"><div><strong>Nombre:</strong> ${escapeHtml(profile.name)}</div><div><strong>Correo:</strong> ${escapeHtml(profile.email)}</div><div><strong>ID:</strong> ${escapeHtml(profile.id)}</div><div><strong>Cognito sub:</strong> ${escapeHtml(profile.cognito_sub)}</div><div><strong>Fecha de alta:</strong> ${escapeHtml(formatDate(profile.created_at))}</div><div><strong>Dirección de facturación:</strong> ${escapeHtml(profile.billing_address)}</div><div><strong>DNI/NIF:</strong> ${escapeHtml(profile.tax_id)}</div><div><strong>Políticas:</strong> ${profile.policies_accepted_at ? `Aceptadas · ${escapeHtml(profile.policies_version)} · ${escapeHtml(formatDate(profile.policies_accepted_at))}` : 'Pendientes'}</div></div>`;
+      const subscriptionsHtml = detailTable(['Plan', 'Estado', 'Importe', 'Renovación', 'Fin de periodo'], detail.subscriptions.map((item) => [escapeHtml(item.plan_name), escapeHtml(item.status), `${escapeHtml((item.amount_cents / 100).toFixed(2))} ${escapeHtml(item.currency)}`, item.auto_renew ? 'Automática' : 'No renueva', escapeHtml(formatDate(item.current_period_end))]));
+      const checkoutsHtml = detailTable(['ID', 'Plan', 'Proveedor', 'Estado', 'Importe', 'Políticas'], detail.checkouts.map((item) => [escapeHtml(item.id), escapeHtml(item.plan_name), escapeHtml(item.provider), escapeHtml(item.status), `${escapeHtml((item.amount_cents / 100).toFixed(2))} ${escapeHtml(item.currency)}`, item.policies_accepted_at ? `${escapeHtml(item.policies_version)} · ${escapeHtml(formatDate(item.policies_accepted_at))}` : '—']));
+      const notificationsHtml = detailTable(['Título', 'Estado', 'Fecha'], detail.notifications.map((item) => [escapeHtml(item.title), escapeHtml(item.status), escapeHtml(formatDate(item.created_at))]));
+      await Swal.fire({ title: escapeHtml(profile.name), html: `<div class="detail-modal"><h3>Perfil</h3>${profileHtml}<h3>Suscripciones</h3>${subscriptionsHtml}<h3>Checkouts</h3>${checkoutsHtml}<h3>Notificaciones</h3>${notificationsHtml}</div>`, width: 'min(960px, 94vw)', confirmButtonText: 'Cerrar' });
+    } catch (cause) {
+      Swal.close();
+      await Swal.fire({ icon: 'error', title: 'No se pudo cargar el detalle', text: cause instanceof Error ? cause.message : 'Error desconocido.' });
+    }
+  };
+
+  const saveCustomer = async (event) => {
+    event.preventDefault();
+    try {
+      if (editingCustomerId) {
+        await send(`/customers/${editingCustomerId}`, 'PATCH', customerForm);
+        await Swal.fire({ icon: 'success', title: 'Cliente actualizado', timer: 1500, showConfirmButton: false });
+      } else {
+        await send('/customers', 'POST', customerForm);
+        await Swal.fire({ icon: 'success', title: 'Cliente creado', timer: 1500, showConfirmButton: false });
+      }
+      resetCustomerForm();
+      await load();
+    } catch (cause) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: cause instanceof Error ? cause.message : 'No se pudo guardar el cliente.' });
+    }
+  };
+
+  const removeCustomer = async (customer) => {
+    const confirmation = await Swal.fire({
+      icon: 'warning',
+      title: `¿Eliminar a ${customer.name}?`,
+      text: 'Esta acción solo es posible si no tiene historial asociado.',
+      showCancelButton: true,
+      confirmButtonText: 'Eliminar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc2626',
+    });
+    if (!confirmation.isConfirmed) return;
+    try {
+      await send(`/customers/${customer.id}`, 'DELETE');
+      await Swal.fire({ icon: 'success', title: 'Cliente eliminado', timer: 1500, showConfirmButton: false });
+      await load();
+    } catch (cause) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo eliminar', text: cause instanceof Error ? cause.message : 'No se pudo eliminar el cliente.' });
+    }
+  };
+
+  const resetServiceForm = () => {
+    setEditingServiceId(null);
+    setServiceForm({ name: '', description: '', minimum_tier: 'basic', active: true });
+    setServiceFiles({ image: null, attachment: null });
+  };
+
+  const editService = (service) => {
+    setEditingServiceId(service.id);
+    setServiceForm({ name: service.name, description: service.description, minimum_tier: service.minimum_tier, active: Boolean(service.active) });
+    setServiceFiles({ image: null, attachment: null });
+    setError('');
+  };
+
+  const openServiceDetail = async (service) => {
+    Swal.fire({ title: 'Cargando servicio…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    try {
+      const detail = await get(`/services/${service.id}`);
+      Swal.close();
+      const imageHtml = detail.image_url ? `<img src="${escapeHtml(`${API_URL}${detail.image_url}`)}" alt="${escapeHtml(detail.name)}" style="max-width:100%;max-height:220px;border-radius:10px;object-fit:cover">` : '<p style="color:#64748b">Sin imagen.</p>';
+      const attachmentHtml = detail.attachment_url ? `<a href="${escapeHtml(`${API_URL}${detail.attachment_url}`)}" target="_blank" rel="noreferrer">${escapeHtml(detail.attachment_filename || 'Abrir archivo')}</a>` : 'Sin archivo adjunto.';
+      await Swal.fire({ title: escapeHtml(detail.name), html: `<div class="detail-modal"><div style="text-align:left"><p><strong>Descripción:</strong> ${escapeHtml(detail.description)}</p><p><strong>Nivel:</strong> ${detail.minimum_tier === 'premium' ? 'Solo Premium' : 'Básica y Premium'}</p><p><strong>Estado:</strong> ${detail.active ? 'Activo' : 'Inactivo'}</p><p><strong>ID:</strong> ${escapeHtml(detail.id)}</p></div>${imageHtml}<p style="text-align:left"><strong>Archivo adjunto:</strong> ${attachmentHtml}</p></div>`, width: 'min(720px, 94vw)', confirmButtonText: 'Cerrar' });
+    } catch (cause) {
+      Swal.close();
+      await Swal.fire({ icon: 'error', title: 'No se pudo cargar el detalle', text: cause instanceof Error ? cause.message : 'Error desconocido.' });
+    }
+  };
+
+  const saveService = async (event) => {
+    event.preventDefault();
+    try {
+      const formData = new FormData();
+      formData.append('name', serviceForm.name);
+      formData.append('description', serviceForm.description);
+      formData.append('minimum_tier', serviceForm.minimum_tier);
+      formData.append('active', String(serviceForm.active));
+      if (serviceFiles.image) formData.append('image', serviceFiles.image);
+      if (serviceFiles.attachment) formData.append('attachment', serviceFiles.attachment);
+      if (editingServiceId) {
+        await sendForm(`/services/${editingServiceId}`, 'PATCH', formData);
+        await Swal.fire({ icon: 'success', title: 'Servicio actualizado', timer: 1500, showConfirmButton: false });
+      } else {
+        await sendForm('/services', 'POST', formData);
+        await Swal.fire({ icon: 'success', title: 'Servicio creado', timer: 1500, showConfirmButton: false });
+      }
+      resetServiceForm();
+      await load();
+    } catch (cause) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: cause instanceof Error ? cause.message : 'No se pudo guardar el servicio.' });
+    }
+  };
+
+  const removeService = async (service) => {
+    const confirmation = await Swal.fire({
+      icon: 'warning',
+      title: `¿Desactivar ${service.name}?`,
+      text: 'Dejará de aparecer para nuevas consultas, pero se conservará en el catálogo.',
+      showCancelButton: true,
+      confirmButtonText: 'Desactivar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc2626',
+    });
+    if (!confirmation.isConfirmed) return;
+    try {
+      await send(`/services/${service.id}`, 'DELETE');
+      await Swal.fire({ icon: 'success', title: 'Servicio desactivado', timer: 1500, showConfirmButton: false });
+      await load();
+    } catch (cause) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo desactivar', text: cause instanceof Error ? cause.message : 'No se pudo desactivar el servicio.' });
+    }
+  };
+
+  const permanentlyDeleteService = async (service) => {
+    const confirmation = await Swal.fire({
+      icon: 'error',
+      title: `¿Eliminar definitivamente ${service.name}?`,
+      text: 'Esta acción borrará el servicio y no se puede deshacer.',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar definitivamente',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#b91c1c',
+    });
+    if (!confirmation.isConfirmed) return;
+    try {
+      await send(`/services/${service.id}/permanent`, 'DELETE');
+      await Swal.fire({ icon: 'success', title: 'Servicio eliminado definitivamente', timer: 1600, showConfirmButton: false });
+      if (editingServiceId === service.id) resetServiceForm();
+      await load();
+    } catch (cause) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo eliminar', text: cause instanceof Error ? cause.message : 'No se pudo eliminar definitivamente el servicio.' });
+    }
+  };
+
+  const changePrice = async (plan) => {
+    const priceInput = await Swal.fire({
+      title: `Nuevo precio para ${plan.name}`,
+      input: 'number',
+      inputValue: (plan.amount_cents / 100).toFixed(2),
+      inputAttributes: { min: '0.01', step: '0.01' },
+      text: `Importe en ${plan.currency}`,
+      showCancelButton: true,
+      confirmButtonText: 'Continuar',
+      cancelButtonText: 'Cancelar',
+      inputValidator: (value) => {
+        const normalized = Number(value);
+        return Number.isFinite(normalized) && normalized > 0 ? undefined : 'Introduce un importe positivo.';
+      },
+    });
+    if (!priceInput.isConfirmed) return;
+    const normalized = Number(priceInput.value);
+    const confirmed = await Swal.fire({
+      icon: 'warning',
+      title: 'Confirmar cambio de precio',
+      text: '¿Está seguro? Esta acción cambiará el precio para nuevas suscripciones y enviará una notificación a los usuarios para que puedan renovar la suscripción o anularla en caso de no estar de acuerdo. Las suscripciones activas conservarán su precio actual.',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, cambiar precio',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!confirmed.isConfirmed) return;
+    try {
+      const result = await send(`/plans/${plan.id}/price`, 'PATCH', { amount_cents: Math.round(normalized * 100), confirmed: true });
+      await Swal.fire({ icon: 'success', title: 'Precio actualizado', text: `${result.notifications_queued} notificaciones encoladas.`, timer: 1800, showConfirmButton: false });
+      await load();
+    } catch (cause) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo actualizar el precio', text: cause instanceof Error ? cause.message : 'Error desconocido.' });
+    }
+  };
+
+  return (
+    <main className="layout">
+      <header className="header">
+        <div>
+          <p className="eyebrow">SUBSCRIPTION SYSTEM</p>
+          <h1>Backoffice local</h1>
+          <p className="muted">Área de decisión del motor de suscripciones.</p>
+        </div>
+        <div className="environment">{config?.environment || 'cargando'}</div>
+      </header>
+
+      {error && <p className="error">{error}</p>}
+
+      <section className="grid">
+        <article className="panel plans-panel">
+          <h2>Planes</h2>
+          <p className="muted">La estructura que luego podrá editar el cliente.</p>
+          {plans.map((plan) => <div className="item" key={plan.id}><div><strong>{plan.name}</strong><span>{(plan.amount_cents / 100).toFixed(2)} {plan.currency} · {plan.interval}</span></div><button className="secondary-button" onClick={() => void changePrice(plan)}>Cambiar precio</button></div>)}
+        </article>
+
+        <article className="panel services-panel">
+          <div className="section-heading"><div><h2>Servicios</h2><p className="muted">Básica incluye los servicios básicos; Premium incluye ambos niveles.</p></div><span className="tag">{services.length}</span></div>
+          <form className="service-form" onSubmit={saveService}>
+            <input value={serviceForm.name} onChange={(event) => setServiceForm({ ...serviceForm, name: event.target.value })} placeholder="Nombre del servicio" required />
+            <textarea value={serviceForm.description} onChange={(event) => setServiceForm({ ...serviceForm, description: event.target.value })} placeholder="Descripción" required />
+            <select value={serviceForm.minimum_tier} onChange={(event) => setServiceForm({ ...serviceForm, minimum_tier: event.target.value })}><option value="basic">Incluido en Básica</option><option value="premium">Solo Premium</option></select>
+            <label className="checkbox-label"><input type="checkbox" checked={serviceForm.active} onChange={(event) => setServiceForm({ ...serviceForm, active: event.target.checked })} /> Activo</label>
+            <FileDropzone label="Imagen del servicio" accept="image/jpeg,image/png,image/webp" file={serviceFiles.image} onFileChange={(file) => setServiceFiles({ ...serviceFiles, image: file })} />
+            <FileDropzone label="Archivo adjunto" file={serviceFiles.attachment} onFileChange={(file) => setServiceFiles({ ...serviceFiles, attachment: file })} />
+            <div className="form-actions"><button className="primary-button" type="submit">{editingServiceId ? 'Guardar cambios' : 'Crear servicio'}</button>{editingServiceId ? <button className="secondary-button" type="button" onClick={resetServiceForm}>Cancelar edición</button> : null}</div>
+          </form>
+          <div className="table-wrapper"><table className="services-table"><thead><tr><th>Servicio</th><th>Nivel</th><th>Imagen</th><th>Adjunto</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{services.map((service) => <tr key={service.id}><td><strong>{service.name}</strong><small>{service.description}</small></td><td>{service.minimum_tier === 'premium' ? 'Solo Premium' : 'Básica + Premium'}</td><td>{service.image_url ? <a href={`${API_URL}${service.image_url}`} target="_blank" rel="noreferrer"><img className="service-thumbnail" src={`${API_URL}${service.image_url}`} alt={service.name} /></a> : '—'}</td><td>{service.attachment_url ? <a href={`${API_URL}${service.attachment_url}`} target="_blank" rel="noreferrer">{service.attachment_filename || 'Abrir archivo'}</a> : '—'}</td><td>{service.active ? 'Activo' : 'Inactivo'}</td><td><div className="row-actions"><button className="secondary-button" onClick={() => void openServiceDetail(service)}>Ver detalle</button><button className="secondary-button" onClick={() => editService(service)}>Editar</button>{service.active ? <button className="danger-button" onClick={() => void removeService(service)}>Desactivar</button> : null}<button className="danger-button" onClick={() => void permanentlyDeleteService(service)}>Eliminar definitivamente</button></div></td></tr>)}</tbody></table></div>
+        </article>
+
+      </section>
+
+      <section className="panel">
+        <div className="section-heading"><div><h2>Clientes</h2><p className="muted">Gestión de los usuarios del cliente administrador.</p></div><span className="tag">{customerTotal} clientes</span></div>
+        <form className="customer-form" onSubmit={saveCustomer}>
+          <input value={customerForm.name} onChange={(event) => setCustomerForm({ ...customerForm, name: event.target.value })} placeholder="Nombre completo" required />
+          <input type="email" value={customerForm.email} onChange={(event) => setCustomerForm({ ...customerForm, email: event.target.value })} placeholder="Correo electrónico" required />
+          <input value={customerForm.cognito_sub} onChange={(event) => setCustomerForm({ ...customerForm, cognito_sub: event.target.value })} placeholder="Cognito sub (opcional)" />
+          <div className="form-actions"><button className="primary-button" type="submit">{editingCustomerId ? 'Guardar cambios' : 'Crear cliente'}</button>{editingCustomerId ? <button className="secondary-button" type="button" onClick={resetCustomerForm}>Cancelar edición</button> : null}</div>
+        </form>
+        {customers.length === 0 ? <p className="muted">Todavía no hay clientes.</p> : <>
+          <div className="table-wrapper">
+            <table className="customers-table">
+              <thead><tr><th><button className="table-sort" onClick={() => sortCustomers('name')}>Nombre {customerSort === 'name' ? (customerDirection === 'asc' ? '↑' : '↓') : ''}</button></th><th>Correo</th><th><button className="table-sort" onClick={() => sortCustomers('created_at')}>Fecha de alta {customerSort === 'created_at' ? (customerDirection === 'asc' ? '↑' : '↓') : ''}</button></th><th>Suscripciones</th><th>Checkouts pendientes</th><th>Acciones</th></tr></thead>
+              <tbody>{customers.map((customer) => <tr key={customer.id}><td><strong>{customer.name}</strong><small>{customer.cognito_sub ? `Cognito: ${customer.cognito_sub}` : 'Sin Cognito asignado'}</small></td><td>{customer.email}<small>{customer.billing_address ? `DNI/NIF: ${customer.tax_id || '—'}` : 'Datos de facturación pendientes'}</small></td><td>{new Date(`${customer.created_at}Z`).toLocaleString('es-ES')}</td><td>{customer.subscription_count} históricas · {customer.current_subscription_count} vigentes</td><td>{customer.pending_checkout_count > 0 ? <strong className="pending-label">{customer.pending_checkout_count} pendiente{customer.pending_checkout_count === 1 ? '' : 's'}</strong> : '—'}</td><td><div className="row-actions"><button className="secondary-button" onClick={() => void openCustomerDetail(customer)}>Ver detalle</button><button className="secondary-button" onClick={() => editCustomer(customer)}>Editar</button><button className="danger-button" onClick={() => void removeCustomer(customer)}>Eliminar</button></div></td></tr>)}</tbody>
+            </table>
+          </div>
+          <div className="pagination"><button className="secondary-button" disabled={customerPage <= 1} onClick={() => goToCustomerPage(customerPage - 1)}>Anterior</button><span>Página {customerPage} de {customerTotalPages}</span><button className="secondary-button" disabled={customerPage >= customerTotalPages} onClick={() => goToCustomerPage(customerPage + 1)}>Siguiente</button></div>
+        </>}
+      </section>
+
+      <section className="panel">
+        <div className="section-heading"><div><h2>Notificaciones de precio</h2><p className="muted">Cola local de avisos generados por cambios de plan.</p></div><span className="tag">{notifications.length} notificaciones</span></div>
+        {notifications.length === 0 ? <p className="muted">No hay notificaciones pendientes.</p> : notifications.slice(0, 10).map((notification) => (
+          <div className="item" key={notification.id}><div><strong>{notification.customer_name} · {notification.customer_email}</strong><span>{notification.title} · {notification.status}</span></div></div>
+        ))}
+      </section>
+
+      <section className="panel">
+        <div className="section-heading"><div><h2>Suscripciones</h2><p className="muted">Cambio manual de estado solo para desarrollo.</p></div><span className="tag">{subscriptions.length} registros</span></div>
+        {subscriptions.length === 0 ? <p className="muted">Todavía no hay suscripciones.</p> : subscriptions.map((subscription) => (
+          <div className="subscription" key={subscription.id}>
+            <div><strong>{subscription.plan_name}</strong><span>Usuario: {subscription.user_id} · {subscription.customer_name} · {subscription.customer_email}</span><span>{subscription.id} · {subscription.status} · {subscription.auto_renew ? 'renovación automática' : 'no renueva'}</span><span>Periodo actual hasta: {subscription.current_period_end}</span><span>{subscription.cancel_at_period_end ? 'Cancelada al finalizar el periodo' : 'Se mantiene vigente según el circuito de pago'}</span></div>
+            <select value={subscription.status} onChange={(event) => void changeStatus(subscription.id, event.target.value)}>
+              {['active', 'suspended', ...(subscription.status === 'pending' ? ['pending'] : []), ...(subscription.status === 'grace_period' ? ['grace_period'] : [])].map((status) => <option key={status} value={status} disabled={status !== 'active' && status !== 'suspended'}>{status}</option>)}
+            </select>
+          </div>
+        ))}
+      </section>
+
+      <section className="panel notes">
+        <h2>Configuración observada</h2>
+        <div className="facts"><span>Entorno</span><strong>{config?.environment || '—'}</strong><span>Autenticación</span><strong>{config?.local_auth_enabled ? 'local' : 'Cognito pendiente'}</strong><span>Pago</span><strong>{config?.payment_provider || '—'}</strong></div>
+      </section>
+    </main>
+  );
+}
+
+createRoot(document.getElementById('root')).render(<App />);
