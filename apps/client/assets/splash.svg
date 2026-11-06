@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1536" role="img" aria-labelledby="title">
+  <title id="title">WAD Gestoría</title>
+  <rect width="1024" height="1536" fill="#f8fafc"/>
+  <rect x="392" y="540" width="240" height="240" rx="66" fill="#1d4ed8"/>
+  <path d="m442 615 48 120 30-67 30 67 48-120" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="20"/>
+  <circle cx="568" cy="602" r="17" fill="#fbbf24"/>
+  <text x="512" y="882" text-anchor="middle" fill="#0f172a" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="800">WAD Gestoría</text>
+  <text x="512" y="932" text-anchor="middle" fill="#64748b" font-family="Arial, Helvetica, sans-serif" font-size="25">Gestión clara, en un solo lugar</text>
+</svg>
