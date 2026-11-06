@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Swal from 'sweetalert2';
 import './styles.css';
@@ -24,15 +24,6 @@ async function send(path, method, body) {
   return response.status === 204 ? null : response.json();
 }
 
-async function sendForm(path, method, formData) {
-  const response = await fetch(`${API_URL}${path}`, { method, body: formData });
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    throw new Error(errorBody?.detail || `API error ${response.status}`);
-  }
-  return response.json();
-}
-
 function escapeHtml(value) {
   return String(value ?? '—').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
 }
@@ -48,40 +39,11 @@ function detailTable(headers, rows) {
   return `<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;text-align:left;font-size:13px"><thead><tr>${headers.map((header) => `<th style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td style="padding:8px;border-bottom:1px solid #f1f5f9;vertical-align:top">${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
-function FileDropzone({ label, accept, file, onFileChange }) {
-  const inputRef = useRef(null);
-  const [dragging, setDragging] = useState(false);
-
-  const selectFile = (files) => {
-    const selected = files?.[0];
-    if (selected) onFileChange(selected);
-  };
-
-  return (
-    <div
-      className={`dropzone${dragging ? ' dropzone-dragging' : ''}`}
-      onClick={() => inputRef.current?.click()}
-      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') inputRef.current?.click(); }}
-      onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
-      onDragOver={(event) => event.preventDefault()}
-      onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
-      onDrop={(event) => { event.preventDefault(); setDragging(false); selectFile(event.dataTransfer.files); }}
-      role="button"
-      tabIndex={0}
-    >
-      <input ref={inputRef} type="file" accept={accept} onChange={(event) => selectFile(event.target.files)} />
-      <strong>{file ? file.name : label}</strong>
-      <span>{file ? `${(file.size / 1024 / 1024).toFixed(2)} MB · listo para subir` : 'Arrastra el archivo aquí o haz clic para seleccionarlo'}</span>
-    </div>
-  );
-}
-
 async function updateSubscription(subscriptionId, status) {
   await send(`/subscriptions/${subscriptionId}/status`, 'PATCH', { status });
 }
 
 function App() {
-  const [services, setServices] = useState([]);
   const [plans, setPlans] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
@@ -95,21 +57,16 @@ function App() {
   const [customerTotalPages, setCustomerTotalPages] = useState(1);
   const [customerSort, setCustomerSort] = useState('created_at');
   const [customerDirection, setCustomerDirection] = useState('desc');
-  const [editingServiceId, setEditingServiceId] = useState(null);
-  const [serviceForm, setServiceForm] = useState({ name: '', description: '', minimum_tier: 'basic', active: true });
-  const [serviceFiles, setServiceFiles] = useState({ image: null, attachment: null });
 
   const load = async (requestedPage = customerPage, requestedSort = customerSort, requestedDirection = customerDirection) => {
     try {
-      const [serviceData, planData, customerData, subscriptionData, notificationData, configData] = await Promise.all([
-        get('/services'),
+      const [planData, customerData, subscriptionData, notificationData, configData] = await Promise.all([
         get('/plans'),
         get(`/customers?page=${requestedPage}&page_size=10&sort=${requestedSort}&direction=${requestedDirection}`),
         get('/subscriptions'),
         get('/notifications'),
         get('/config'),
       ]);
-      setServices(serviceData);
       setPlans(planData);
       setCustomers(customerData.items);
       setCustomerTotal(customerData.total);
@@ -214,98 +171,6 @@ function App() {
     }
   };
 
-  const resetServiceForm = () => {
-    setEditingServiceId(null);
-    setServiceForm({ name: '', description: '', minimum_tier: 'basic', active: true });
-    setServiceFiles({ image: null, attachment: null });
-  };
-
-  const editService = (service) => {
-    setEditingServiceId(service.id);
-    setServiceForm({ name: service.name, description: service.description, minimum_tier: service.minimum_tier, active: Boolean(service.active) });
-    setServiceFiles({ image: null, attachment: null });
-    setError('');
-  };
-
-  const openServiceDetail = async (service) => {
-    Swal.fire({ title: 'Cargando servicio…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-    try {
-      const detail = await get(`/services/${service.id}`);
-      Swal.close();
-      const imageHtml = detail.image_url ? `<img src="${escapeHtml(`${API_URL}${detail.image_url}`)}" alt="${escapeHtml(detail.name)}" style="max-width:100%;max-height:220px;border-radius:10px;object-fit:cover">` : '<p style="color:#64748b">Sin imagen.</p>';
-      const attachmentHtml = detail.attachment_url ? `<a href="${escapeHtml(`${API_URL}${detail.attachment_url}`)}" target="_blank" rel="noreferrer">${escapeHtml(detail.attachment_filename || 'Abrir archivo')}</a>` : 'Sin archivo adjunto.';
-      await Swal.fire({ title: escapeHtml(detail.name), html: `<div class="detail-modal"><div style="text-align:left"><p><strong>Descripción:</strong> ${escapeHtml(detail.description)}</p><p><strong>Nivel:</strong> ${detail.minimum_tier === 'premium' ? 'Solo Premium' : 'Básica y Premium'}</p><p><strong>Estado:</strong> ${detail.active ? 'Activo' : 'Inactivo'}</p><p><strong>ID:</strong> ${escapeHtml(detail.id)}</p></div>${imageHtml}<p style="text-align:left"><strong>Archivo adjunto:</strong> ${attachmentHtml}</p></div>`, width: 'min(720px, 94vw)', confirmButtonText: 'Cerrar' });
-    } catch (cause) {
-      Swal.close();
-      await Swal.fire({ icon: 'error', title: 'No se pudo cargar el detalle', text: cause instanceof Error ? cause.message : 'Error desconocido.' });
-    }
-  };
-
-  const saveService = async (event) => {
-    event.preventDefault();
-    try {
-      const formData = new FormData();
-      formData.append('name', serviceForm.name);
-      formData.append('description', serviceForm.description);
-      formData.append('minimum_tier', serviceForm.minimum_tier);
-      formData.append('active', String(serviceForm.active));
-      if (serviceFiles.image) formData.append('image', serviceFiles.image);
-      if (serviceFiles.attachment) formData.append('attachment', serviceFiles.attachment);
-      if (editingServiceId) {
-        await sendForm(`/services/${editingServiceId}`, 'PATCH', formData);
-        await Swal.fire({ icon: 'success', title: 'Servicio actualizado', timer: 1500, showConfirmButton: false });
-      } else {
-        await sendForm('/services', 'POST', formData);
-        await Swal.fire({ icon: 'success', title: 'Servicio creado', timer: 1500, showConfirmButton: false });
-      }
-      resetServiceForm();
-      await load();
-    } catch (cause) {
-      await Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: cause instanceof Error ? cause.message : 'No se pudo guardar el servicio.' });
-    }
-  };
-
-  const removeService = async (service) => {
-    const confirmation = await Swal.fire({
-      icon: 'warning',
-      title: `¿Desactivar ${service.name}?`,
-      text: 'Dejará de aparecer para nuevas consultas, pero se conservará en el catálogo.',
-      showCancelButton: true,
-      confirmButtonText: 'Desactivar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#dc2626',
-    });
-    if (!confirmation.isConfirmed) return;
-    try {
-      await send(`/services/${service.id}`, 'DELETE');
-      await Swal.fire({ icon: 'success', title: 'Servicio desactivado', timer: 1500, showConfirmButton: false });
-      await load();
-    } catch (cause) {
-      await Swal.fire({ icon: 'error', title: 'No se pudo desactivar', text: cause instanceof Error ? cause.message : 'No se pudo desactivar el servicio.' });
-    }
-  };
-
-  const permanentlyDeleteService = async (service) => {
-    const confirmation = await Swal.fire({
-      icon: 'error',
-      title: `¿Eliminar definitivamente ${service.name}?`,
-      text: 'Esta acción borrará el servicio y no se puede deshacer.',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, eliminar definitivamente',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#b91c1c',
-    });
-    if (!confirmation.isConfirmed) return;
-    try {
-      await send(`/services/${service.id}/permanent`, 'DELETE');
-      await Swal.fire({ icon: 'success', title: 'Servicio eliminado definitivamente', timer: 1600, showConfirmButton: false });
-      if (editingServiceId === service.id) resetServiceForm();
-      await load();
-    } catch (cause) {
-      await Swal.fire({ icon: 'error', title: 'No se pudo eliminar', text: cause instanceof Error ? cause.message : 'No se pudo eliminar definitivamente el servicio.' });
-    }
-  };
-
   const changePrice = async (plan) => {
     const priceInput = await Swal.fire({
       title: `Nuevo precio para ${plan.name}`,
@@ -359,20 +224,6 @@ function App() {
           <h2>Planes</h2>
           <p className="muted">La estructura que luego podrá editar el cliente.</p>
           {plans.map((plan) => <div className="item" key={plan.id}><div><strong>{plan.name}</strong><span>{(plan.amount_cents / 100).toFixed(2)} {plan.currency} · {plan.interval}</span></div><button className="secondary-button" onClick={() => void changePrice(plan)}>Cambiar precio</button></div>)}
-        </article>
-
-        <article className="panel services-panel">
-          <div className="section-heading"><div><h2>Servicios</h2><p className="muted">Básica incluye los servicios básicos; Premium incluye ambos niveles.</p></div><span className="tag">{services.length}</span></div>
-          <form className="service-form" onSubmit={saveService}>
-            <input value={serviceForm.name} onChange={(event) => setServiceForm({ ...serviceForm, name: event.target.value })} placeholder="Nombre del servicio" required />
-            <textarea value={serviceForm.description} onChange={(event) => setServiceForm({ ...serviceForm, description: event.target.value })} placeholder="Descripción" required />
-            <select value={serviceForm.minimum_tier} onChange={(event) => setServiceForm({ ...serviceForm, minimum_tier: event.target.value })}><option value="basic">Incluido en Básica</option><option value="premium">Solo Premium</option></select>
-            <label className="checkbox-label"><input type="checkbox" checked={serviceForm.active} onChange={(event) => setServiceForm({ ...serviceForm, active: event.target.checked })} /> Activo</label>
-            <FileDropzone label="Imagen del servicio" accept="image/jpeg,image/png,image/webp" file={serviceFiles.image} onFileChange={(file) => setServiceFiles({ ...serviceFiles, image: file })} />
-            <FileDropzone label="Archivo adjunto" file={serviceFiles.attachment} onFileChange={(file) => setServiceFiles({ ...serviceFiles, attachment: file })} />
-            <div className="form-actions"><button className="primary-button" type="submit">{editingServiceId ? 'Guardar cambios' : 'Crear servicio'}</button>{editingServiceId ? <button className="secondary-button" type="button" onClick={resetServiceForm}>Cancelar edición</button> : null}</div>
-          </form>
-          <div className="table-wrapper"><table className="services-table"><thead><tr><th>Servicio</th><th>Nivel</th><th>Imagen</th><th>Adjunto</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{services.map((service) => <tr key={service.id}><td><strong>{service.name}</strong><small>{service.description}</small></td><td>{service.minimum_tier === 'premium' ? 'Solo Premium' : 'Básica + Premium'}</td><td>{service.image_url ? <a href={`${API_URL}${service.image_url}`} target="_blank" rel="noreferrer"><img className="service-thumbnail" src={`${API_URL}${service.image_url}`} alt={service.name} /></a> : '—'}</td><td>{service.attachment_url ? <a href={`${API_URL}${service.attachment_url}`} target="_blank" rel="noreferrer">{service.attachment_filename || 'Abrir archivo'}</a> : '—'}</td><td>{service.active ? 'Activo' : 'Inactivo'}</td><td><div className="row-actions"><button className="secondary-button" onClick={() => void openServiceDetail(service)}>Ver detalle</button><button className="secondary-button" onClick={() => editService(service)}>Editar</button>{service.active ? <button className="danger-button" onClick={() => void removeService(service)}>Desactivar</button> : null}<button className="danger-button" onClick={() => void permanentlyDeleteService(service)}>Eliminar definitivamente</button></div></td></tr>)}</tbody></table></div>
         </article>
 
       </section>
