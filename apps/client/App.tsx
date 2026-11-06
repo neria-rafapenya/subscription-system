@@ -470,10 +470,13 @@ export default function App() {
       </View>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.eyebrow}>SUBSCRIPTION SYSTEM · {environment.toUpperCase()}</Text>
-        <View style={styles.topRow}>
-          <Text style={styles.title}>{loggedIn ? `Hola, ${user?.name || 'usuario'}` : 'Acceso a la aplicación'}</Text>
-        </View>
-        <Text style={styles.subtitle}>{appConfig?.vertical_display_name ? `${appConfig.vertical_display_name} · ` : ''}{loggedIn ? (appConfig?.vertical_description || 'Servicios y suscripciones.') : 'Puedes crear una cuenta sin contratar ninguna suscripción.'}</Text>
+        {!loggedIn ? <>
+          <View style={styles.topRow}><Text style={styles.title}>Acceso a la aplicación</Text></View>
+          <Text style={styles.subtitle}>Puedes crear una cuenta sin contratar ninguna suscripción.</Text>
+        </> : activeScreen === 'home' ? <>
+          <View style={styles.topRow}><Text style={styles.title}>{`Hola, ${user?.name || 'usuario'}`}</Text></View>
+          <Text style={styles.subtitle}>{appConfig?.vertical_display_name ? `${appConfig.vertical_display_name} · ` : ''}{appConfig?.vertical_description || 'Servicios y suscripciones.'}</Text>
+        </> : null}
 
         {message ? <Text style={styles.message}>{message}</Text> : null}
         {!loggedIn ? (
