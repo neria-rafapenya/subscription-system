@@ -459,6 +459,7 @@ export default function App() {
       {Boolean(subscription.auto_renew) ? <Text style={styles.cardText}>Renovación automática: sí</Text> : <Text style={styles.cardText}>No se renovará automáticamente. Acceso hasta: {subscription.current_period_end}</Text>}
       {(plans.find((plan) => plan.id === subscription.plan_id)?.amount_cents ?? subscription.amount_cents) !== subscription.amount_cents ? <Pressable style={styles.button} onPress={() => askAcceptPriceChange(subscription.id)}><Text style={styles.buttonText}>Aceptar nuevo precio y renovar</Text></Pressable> : null}
     </View>)}
+    {!hasUsableSubscription ? renderPlanOptions() : null}
   </>;
 
   const renderActiveDashboardScreen = () => {
