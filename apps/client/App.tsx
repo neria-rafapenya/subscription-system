@@ -116,7 +116,7 @@ export default function App() {
       const result = await api.login(email, password);
       api.setAccessToken(result.access_token);
       setUser(result.user);
-      setMessage('Sesión local iniciada.');
+      setMessage('');
       setLoggedIn(true);
     } catch (cause) {
       showDialog({ kind: 'error', title: 'No se pudo iniciar sesión', message: cause instanceof Error ? cause.message : 'Comprueba tus credenciales.' });
