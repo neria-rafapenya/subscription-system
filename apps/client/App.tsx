@@ -413,6 +413,15 @@ export default function App() {
 
   const renderModule = () => ModuleExtension ? <ModuleExtension accessToken={api.getAccessToken()} activeSection={activeScreen} showFreeTools={freeToolsVisible} selectedFreeTool={selectedFreeTool ?? undefined} onCloseFreeTools={closeFreeTools} ui={{ Text, TextInput, TouchableOpacity, View, Modal, Pressable, ScrollView }} /> : null;
 
+  const renderPlanOptions = () => <>
+    <Text style={styles.sectionTitle}>Planes de suscripción</Text>
+    {plans.map((plan) => <View key={plan.id} style={styles.card}>
+      <View style={styles.row}><Text style={styles.cardTitle}>{plan.name}</Text><Text style={styles.price}>{(plan.amount_cents / 100).toFixed(2)} {plan.currency}/mes</Text></View>
+      <Text style={styles.cardText}>{plan.description}</Text>
+      <Pressable disabled={hasCurrentSubscription || hasOpenCheckout || Boolean(selectedPlan)} style={[styles.button, hasCurrentSubscription || hasOpenCheckout || selectedPlan ? styles.buttonDisabled : null]} onPress={() => subscribe(plan)}><Text style={styles.buttonText}>{hasCurrentSubscription ? 'Ya tienes una suscripción vigente' : hasOpenCheckout ? 'Tienes un checkout pendiente' : selectedPlan ? 'Completa los datos de facturación' : 'Iniciar suscripción'}</Text></Pressable>
+    </View>)}
+  </>;
+
   const renderCatalog = () => <>
     <Text style={styles.sectionTitle}>Servicios disponibles</Text>
     {services.map((service) => <View key={service.id} style={styles.card}>
@@ -423,12 +432,7 @@ export default function App() {
       <Pressable style={styles.linkButton} onPress={() => setSelectedService(service)}><Text style={styles.linkButtonText}>Ver detalle y usabilidad</Text></Pressable>
       {service.included && service.attachment_url ? <Pressable onPress={() => void Linking.openURL(service.attachment_url as string)}><Text style={styles.attachmentLink}>Abrir documento adjunto{service.attachment_filename ? ` · ${service.attachment_filename}` : ''}</Text></Pressable> : null}
     </View>)}
-    <Text style={styles.sectionTitle}>Planes de suscripción</Text>
-    {plans.map((plan) => <View key={plan.id} style={styles.card}>
-      <View style={styles.row}><Text style={styles.cardTitle}>{plan.name}</Text><Text style={styles.price}>{(plan.amount_cents / 100).toFixed(2)} {plan.currency}/mes</Text></View>
-      <Text style={styles.cardText}>{plan.description}</Text>
-      <Pressable disabled={hasCurrentSubscription || hasOpenCheckout || Boolean(selectedPlan)} style={[styles.button, hasCurrentSubscription || hasOpenCheckout || selectedPlan ? styles.buttonDisabled : null]} onPress={() => subscribe(plan)}><Text style={styles.buttonText}>{hasCurrentSubscription ? 'Ya tienes una suscripción vigente' : hasOpenCheckout ? 'Tienes un checkout pendiente' : selectedPlan ? 'Completa los datos de facturación' : 'Iniciar suscripción'}</Text></Pressable>
-    </View>)}
+    {renderPlanOptions()}
   </>;
 
   const renderSubscriptions = () => <>
@@ -458,7 +462,7 @@ export default function App() {
   </>;
 
   const renderActiveDashboardScreen = () => {
-    if (activeScreen === 'home') return <>{renderFreeToolsLauncher()}{renderModule()}</>;
+    if (activeScreen === 'home') return <>{renderFreeToolsLauncher()}{!hasUsableSubscription ? renderPlanOptions() : null}{renderModule()}</>;
     if (activeScreen === 'catalog') return <>{renderCatalog()}</>;
     if (activeScreen === 'subscriptions') return <>{renderSubscriptions()}</>;
     return <>{renderModule()}</>;
