@@ -20,7 +20,7 @@ const sizeInMb = (value: number) => `${(value / (1024 * 1024)).toFixed(value % (
 
 const numberValue = (value: string) => Number(value.replace(',', '.')) || 0;
 
-function FreeTools({ ui }: { ui: Record<string, any> }) {
+function FreeTools({ ui, selectedTool }: { ui: Record<string, any>; selectedTool?: string }) {
   const { Text, TextInput, TouchableOpacity, View } = ui;
   const [grossAnnual, setGrossAnnual] = useState('30000');
   const [payments, setPayments] = useState('12');
@@ -60,15 +60,16 @@ function FreeTools({ ui }: { ui: Record<string, any> }) {
     `20/10/${calendarYear} · Tercer trimestre · IVA / IRPF`,
     `30/01/${calendarYear} · Resúmenes anuales y cuarto trimestre`,
   ];
+  const showTool = (toolId: string) => !selectedTool || selectedTool === toolId;
 
   return <View style={freeStyles.wrapper}>
     <Text style={freeStyles.eyebrow}>CAPTACIÓN · SIN SUSCRIPCIÓN</Text>
     <Text style={freeStyles.title}>Herramientas gratuitas</Text>
     <Text style={freeStyles.subtitle}>Simulaciones orientativas para autónomos y empresas. Después puedes contactar con la gestoría para revisar tu caso.</Text>
-    <View style={freeStyles.card}><Text style={freeStyles.cardTitle}>Calculadora sueldo neto</Text><TextInput style={freeStyles.input} keyboardType="decimal-pad" value={grossAnnual} onChangeText={setGrossAnnual} placeholder="Bruto anual" /><TextInput style={freeStyles.input} keyboardType="number-pad" value={payments} onChangeText={setPayments} placeholder="Número de pagas" /><View style={freeStyles.row}><TextInput style={freeStyles.halfInput} keyboardType="decimal-pad" value={socialRate} onChangeText={setSocialRate} placeholder="SS %" /><TextInput style={freeStyles.halfInput} keyboardType="decimal-pad" value={incomeTaxRate} onChangeText={setIncomeTaxRate} placeholder="IRPF %" /></View><TouchableOpacity style={freeStyles.button} onPress={calculateNet}><Text style={freeStyles.buttonText}>Calcular sueldo neto</Text></TouchableOpacity>{netResult ? <Text style={freeStyles.result}>{netResult}</Text> : null}</View>
-    <View style={freeStyles.card}><Text style={freeStyles.cardTitle}>Calculadora cuota autónomos</Text><TextInput style={freeStyles.input} keyboardType="decimal-pad" value={autonomoBase} onChangeText={setAutonomoBase} placeholder="Base o rendimiento mensual" /><TextInput style={freeStyles.input} keyboardType="decimal-pad" value={autonomoRate} onChangeText={setAutonomoRate} placeholder="Tipo estimado %" /><TouchableOpacity style={freeStyles.button} onPress={calculateAutonomo}><Text style={freeStyles.buttonText}>Calcular cuota</Text></TouchableOpacity>{autonomoResult ? <Text style={freeStyles.result}>{autonomoResult}</Text> : null}</View>
-    <View style={freeStyles.card}><Text style={freeStyles.cardTitle}>Simulador IVA / IRPF trimestral</Text><TextInput style={freeStyles.input} keyboardType="decimal-pad" value={quarterlyIncome} onChangeText={setQuarterlyIncome} placeholder="Ingresos del trimestre" /><TextInput style={freeStyles.input} keyboardType="decimal-pad" value={quarterlyExpenses} onChangeText={setQuarterlyExpenses} placeholder="Gastos del trimestre" /><TextInput style={freeStyles.input} keyboardType="decimal-pad" value={quarterlyTaxRate} onChangeText={setQuarterlyTaxRate} placeholder="Retención IRPF %" /><TouchableOpacity style={freeStyles.button} onPress={calculateQuarterly}><Text style={freeStyles.buttonText}>Simular trimestre</Text></TouchableOpacity>{quarterlyResult ? <Text style={freeStyles.result}>{quarterlyResult}</Text> : null}</View>
-    <View style={freeStyles.card}><Text style={freeStyles.cardTitle}>Calendario fiscal del año</Text><TextInput style={freeStyles.input} keyboardType="number-pad" value={calendarYear} onChangeText={setCalendarYear} placeholder="Año" />{fiscalDates.map((item) => <Text key={item} style={freeStyles.calendarItem}>{item}</Text>)}<Text style={freeStyles.disclaimer}>Fechas orientativas: deben contrastarse con el calendario oficial y la situación fiscal aplicable.</Text></View>
+    {showTool('salary') ? <View style={freeStyles.card}><Text style={freeStyles.cardTitle}>Calculadora sueldo neto</Text><TextInput style={freeStyles.input} keyboardType="decimal-pad" value={grossAnnual} onChangeText={setGrossAnnual} placeholder="Bruto anual" /><TextInput style={freeStyles.input} keyboardType="number-pad" value={payments} onChangeText={setPayments} placeholder="Número de pagas" /><View style={freeStyles.row}><TextInput style={freeStyles.halfInput} keyboardType="decimal-pad" value={socialRate} onChangeText={setSocialRate} placeholder="SS %" /><TextInput style={freeStyles.halfInput} keyboardType="decimal-pad" value={incomeTaxRate} onChangeText={setIncomeTaxRate} placeholder="IRPF %" /></View><TouchableOpacity style={freeStyles.button} onPress={calculateNet}><Text style={freeStyles.buttonText}>Calcular sueldo neto</Text></TouchableOpacity>{netResult ? <Text style={freeStyles.result}>{netResult}</Text> : null}</View> : null}
+    {showTool('autonomos') ? <View style={freeStyles.card}><Text style={freeStyles.cardTitle}>Calculadora cuota autónomos</Text><TextInput style={freeStyles.input} keyboardType="decimal-pad" value={autonomoBase} onChangeText={setAutonomoBase} placeholder="Base o rendimiento mensual" /><TextInput style={freeStyles.input} keyboardType="decimal-pad" value={autonomoRate} onChangeText={setAutonomoRate} placeholder="Tipo estimado %" /><TouchableOpacity style={freeStyles.button} onPress={calculateAutonomo}><Text style={freeStyles.buttonText}>Calcular cuota</Text></TouchableOpacity>{autonomoResult ? <Text style={freeStyles.result}>{autonomoResult}</Text> : null}</View> : null}
+    {showTool('iva-irpf') ? <View style={freeStyles.card}><Text style={freeStyles.cardTitle}>Simulador IVA / IRPF trimestral</Text><TextInput style={freeStyles.input} keyboardType="decimal-pad" value={quarterlyIncome} onChangeText={setQuarterlyIncome} placeholder="Ingresos del trimestre" /><TextInput style={freeStyles.input} keyboardType="decimal-pad" value={quarterlyExpenses} onChangeText={setQuarterlyExpenses} placeholder="Gastos del trimestre" /><TextInput style={freeStyles.input} keyboardType="decimal-pad" value={quarterlyTaxRate} onChangeText={setQuarterlyTaxRate} placeholder="Retención IRPF %" /><TouchableOpacity style={freeStyles.button} onPress={calculateQuarterly}><Text style={freeStyles.buttonText}>Simular trimestre</Text></TouchableOpacity>{quarterlyResult ? <Text style={freeStyles.result}>{quarterlyResult}</Text> : null}</View> : null}
+    {showTool('calendario') ? <View style={freeStyles.card}><Text style={freeStyles.cardTitle}>Calendario fiscal del año</Text><TextInput style={freeStyles.input} keyboardType="number-pad" value={calendarYear} onChangeText={setCalendarYear} placeholder="Año" />{fiscalDates.map((item) => <Text key={item} style={freeStyles.calendarItem}>{item}</Text>)}<Text style={freeStyles.disclaimer}>Fechas orientativas: deben contrastarse con el calendario oficial y la situación fiscal aplicable.</Text></View> : null}
   </View>;
 }
 
@@ -99,7 +100,7 @@ const freeStyles = {
   sheetScroll: { paddingHorizontal: 18, paddingBottom: 28 },
 };
 
-export default function GestoriaExtension({ accessToken, ui, showFreeTools = false, onCloseFreeTools }: { accessToken: string | null; ui: Record<string, any>; showFreeTools?: boolean; onCloseFreeTools?: () => void }) {
+export default function GestoriaExtension({ accessToken, ui, showFreeTools = false, selectedFreeTool, onCloseFreeTools }: { accessToken: string | null; ui: Record<string, any>; showFreeTools?: boolean; selectedFreeTool?: string; onCloseFreeTools?: () => void }) {
   const { Modal, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } = ui;
   const [advisors, setAdvisors] = useState<Advisor[]>([]);
   const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
@@ -246,10 +247,10 @@ export default function GestoriaExtension({ accessToken, ui, showFreeTools = fal
         <Pressable style={freeStyles.sheetBackdrop} onPress={onCloseFreeTools} />
         <View style={freeStyles.sheet}>
           <View style={freeStyles.sheetHeader}>
-            <View style={freeStyles.sheetHeaderCopy}><Text style={freeStyles.sheetTitle}>Herramientas gratuitas</Text><Text style={freeStyles.sheetHint}>Orientativas y disponibles sin suscripción.</Text></View>
+            <View style={freeStyles.sheetHeaderCopy}><Text style={freeStyles.sheetTitle}>{selectedFreeTool === 'salary' ? 'Calculadora sueldo neto' : selectedFreeTool === 'autonomos' ? 'Calculadora cuota autónomos' : selectedFreeTool === 'iva-irpf' ? 'Simulador IVA / IRPF' : selectedFreeTool === 'calendario' ? 'Calendario fiscal' : 'Herramientas gratuitas'}</Text><Text style={freeStyles.sheetHint}>Orientativa y disponible sin suscripción.</Text></View>
             <TouchableOpacity accessibilityLabel="Cerrar herramientas gratuitas" style={freeStyles.closeButton} onPress={onCloseFreeTools}><Text style={freeStyles.closeButtonText}>×</Text></TouchableOpacity>
           </View>
-          <ScrollView contentContainerStyle={freeStyles.sheetScroll}><FreeTools ui={ui} /></ScrollView>
+          <ScrollView contentContainerStyle={freeStyles.sheetScroll}><FreeTools ui={ui} selectedTool={selectedFreeTool} /></ScrollView>
         </View>
       </View>
     </Modal>

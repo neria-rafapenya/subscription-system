@@ -45,6 +45,7 @@ export default function App() {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [freeToolsVisible, setFreeToolsVisible] = useState(false);
+  const [selectedFreeTool, setSelectedFreeTool] = useState<string | null>(null);
 
   const showDialog = (nextDialog: AppDialogState) => setDialog(nextDialog);
 
@@ -317,6 +318,7 @@ export default function App() {
     setPolicyModalVisible(false);
     setDrawerVisible(false);
     setFreeToolsVisible(false);
+    setSelectedFreeTool(null);
     setAuthMode('login');
     setMessage('Sesión cerrada.');
   };
@@ -476,14 +478,19 @@ export default function App() {
         {loggedIn && appConfig?.vertical_module === 'gestoria' ? <View style={styles.freeToolsLauncher}>
           <View style={styles.freeToolsLauncherCopy}>
             <Text style={styles.freeToolsLauncherTitle}>Herramientas gratuitas</Text>
-            <Text style={styles.freeToolsLauncherText}>Calculadoras y calendario fiscal orientativo, sin suscripción.</Text>
+            <Text style={styles.freeToolsLauncherText}>Abre cada calculadora o el calendario fiscal sin contratar una suscripción.</Text>
           </View>
-          <Pressable accessibilityLabel="Abrir herramientas gratuitas" style={styles.freeToolsLauncherButton} onPress={() => setFreeToolsVisible(true)}>
-            <Text style={styles.freeToolsLauncherIcon}>🧮</Text>
-          </Pressable>
+          <View style={styles.freeToolsButtons}>
+            {[
+              { id: 'salary', label: 'Sueldo neto', icon: '💶' },
+              { id: 'autonomos', label: 'Cuota autónomos', icon: '🧾' },
+              { id: 'iva-irpf', label: 'IVA / IRPF', icon: '📊' },
+              { id: 'calendario', label: 'Calendario fiscal', icon: '🗓️' },
+            ].map((tool) => <Pressable key={tool.id} accessibilityLabel={`Abrir ${tool.label}`} style={styles.freeToolButton} onPress={() => { setSelectedFreeTool(tool.id); setFreeToolsVisible(true); }}><Text style={styles.freeToolIcon}>{tool.icon}</Text><Text style={styles.freeToolButtonText}>{tool.label}</Text></Pressable>)}
+          </View>
         </View> : null}
 
-        {ModuleExtension ? <ModuleExtension accessToken={api.getAccessToken()} showFreeTools={freeToolsVisible} onCloseFreeTools={() => setFreeToolsVisible(false)} ui={{ Text, TextInput, TouchableOpacity, View, Modal, Pressable, ScrollView }} /> : null}
+        {ModuleExtension ? <ModuleExtension accessToken={api.getAccessToken()} showFreeTools={freeToolsVisible} selectedFreeTool={selectedFreeTool ?? undefined} onCloseFreeTools={() => { setFreeToolsVisible(false); setSelectedFreeTool(null); }} ui={{ Text, TextInput, TouchableOpacity, View, Modal, Pressable, ScrollView }} /> : null}
 
         <Text style={styles.sectionTitle}>Servicios disponibles</Text>
         {services.map((service) => (
@@ -623,11 +630,13 @@ const styles = StyleSheet.create({
   buttonDisabled: { backgroundColor: '#94a3b8' },
   cancelButton: { borderColor: '#dc2626', borderWidth: 1, borderRadius: 9, paddingVertical: 8, paddingHorizontal: 12 },
   cancelButtonText: { color: '#b91c1c', fontWeight: '700' },
-  freeToolsLauncher: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ecfeff', borderColor: '#99f6e4', borderWidth: 1, borderRadius: 14, padding: 14, gap: 12 },
-  freeToolsLauncherCopy: { flex: 1, gap: 3 },
+  freeToolsLauncher: { backgroundColor: '#ecfeff', borderColor: '#99f6e4', borderWidth: 1, borderRadius: 14, padding: 14, gap: 12 },
+  freeToolsLauncherCopy: { gap: 3 },
   freeToolsLauncherTitle: { color: '#134e4a', fontSize: 16, fontWeight: '800' },
   freeToolsLauncherText: { color: '#475569', fontSize: 13, lineHeight: 18 },
-  freeToolsLauncherButton: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f766e' },
-  freeToolsLauncherIcon: { fontSize: 26 },
+  freeToolsButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  freeToolButton: { minWidth: 140, flex: 1, minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#0f766e', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 9 },
+  freeToolIcon: { fontSize: 18 },
+  freeToolButtonText: { color: '#fff', fontSize: 12, fontWeight: '800', textAlign: 'center' },
   empty: { color: '#64748b' },
 });

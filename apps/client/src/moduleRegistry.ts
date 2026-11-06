@@ -5,6 +5,7 @@ export type ClientModuleProps = {
   accessToken: string | null;
   ui: Record<string, any>;
   showFreeTools?: boolean;
+  selectedFreeTool?: string;
   onCloseFreeTools?: () => void;
 };
 
