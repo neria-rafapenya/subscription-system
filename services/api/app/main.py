@@ -23,7 +23,7 @@ from .security import (
 from .storage import delete_storage_key, public_file_url, save_service_upload
 from .paypal import PayPalAPIError, PayPalConfigurationError, cancel_subscription as paypal_cancel_subscription, create_subscription as paypal_create_subscription, get_subscription as paypal_get_subscription, paypal_settings, plan_id_for_tier
 from .validation import normalize_spanish_person_id
-from .vertical_module import register_vertical_backend, vertical_description, vertical_display_name, vertical_module_id
+from .vertical_module import load_vertical_module, register_vertical_backend, service_catalog, vertical_description, vertical_display_name, vertical_module_id
 
 
 settings = get_settings()
@@ -80,14 +80,14 @@ class PasswordReset(BaseModel):
 class ServiceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = Field(min_length=1, max_length=500)
-    minimum_tier: str = Field(default="basic", pattern="^(basic|premium)$")
+    minimum_tier: str = Field(default="basic", pattern="^(free|basic|premium)$")
     active: bool = True
 
 
 class ServiceUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, min_length=1, max_length=500)
-    minimum_tier: str | None = Field(default=None, pattern="^(basic|premium)$")
+    minimum_tier: str | None = Field(default=None, pattern="^(free|basic|premium)$")
     active: bool | None = None
 
 
@@ -234,6 +234,9 @@ def list_services() -> list[dict]:
 
 
 def service_with_file_urls(service: dict) -> dict:
+    metadata = service_catalog().get(service.get("id"), {})
+    service["details"] = metadata.get("details")
+    service["usage"] = metadata.get("usage")
     service["image_url"] = public_file_url(service.get("image_key"))
     service["attachment_url"] = public_file_url(service.get("attachment_key"))
     return service
@@ -260,7 +263,8 @@ def list_available_services(authorization: str | None = Header(default=None)) ->
     )
     for service in services:
         service["included"] = bool(
-            subscription_tier == "premium"
+            service["minimum_tier"] == "free"
+            or subscription_tier == "premium"
             or (subscription_tier == "basic" and service["minimum_tier"] == "basic")
         )
         service["subscription_tier"] = subscription_tier
@@ -271,7 +275,7 @@ def list_available_services(authorization: str | None = Header(default=None)) ->
 def create_service(
     name: str = Form(..., min_length=1, max_length=120),
     description: str = Form(..., min_length=1, max_length=500),
-    minimum_tier: str = Form("basic", pattern="^(basic|premium)$"),
+    minimum_tier: str = Form("basic", pattern="^(free|basic|premium)$"),
     active: bool = Form(True),
     image: UploadFile | None = File(None),
     attachment: UploadFile | None = File(None),
@@ -315,7 +319,7 @@ def update_service(
     service_id: str,
     name: str | None = Form(None, min_length=1, max_length=120),
     description: str | None = Form(None, min_length=1, max_length=500),
-    minimum_tier: str | None = Form(None, pattern="^(basic|premium)$"),
+    minimum_tier: str | None = Form(None, pattern="^(free|basic|premium)$"),
     active: bool | None = Form(None),
     image: UploadFile | None = File(None),
     attachment: UploadFile | None = File(None),

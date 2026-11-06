@@ -23,13 +23,15 @@ class Settings:
         self.local_file_storage_path = os.getenv("LOCAL_FILE_STORAGE_PATH", "./data/files")
         self.local_auth_enabled = os.getenv("LOCAL_AUTH_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
         self.payment_provider = os.getenv("PAYMENT_PROVIDER", "local")
-        self.vertical_module = os.getenv("APP_VERTICAL_MODULE", "maintenance")
+        self.vertical_module = os.getenv("APP_VERTICAL_MODULE", "gestoria")
         self.backoffice_admin_token = os.getenv("BACKOFFICE_ADMIN_TOKEN", "")
         self.aws_region = os.getenv("AWS_REGION")
         self.secrets_manager_secret_name = os.getenv("SECRETS_MANAGER_SECRET_NAME")
         self.secrets_manager_enabled = os.getenv("SECRETS_MANAGER_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
         self.cognito_issuer = os.getenv("COGNITO_ISSUER")
         self.paypal_secret_name = os.getenv("PAYPAL_SECRET_NAME")
+        self.gestoria_scheduler_provider = os.getenv("GESTORIA_SCHEDULER_PROVIDER", "local")
+        self.gestoria_erp_provider = os.getenv("GESTORIA_ERP_PROVIDER", "local")
 
         env_file = REPOSITORY_ROOT / ".env"
         if env_file.exists():
@@ -66,6 +68,8 @@ class Settings:
         self.secrets_manager_enabled = values.get("SECRETS_MANAGER_ENABLED", str(self.secrets_manager_enabled)).lower() in {"1", "true", "yes", "on"}
         self.cognito_issuer = values.get("COGNITO_ISSUER", self.cognito_issuer)
         self.paypal_secret_name = values.get("PAYPAL_SECRET_NAME", self.paypal_secret_name)
+        self.gestoria_scheduler_provider = values.get("GESTORIA_SCHEDULER_PROVIDER", self.gestoria_scheduler_provider)
+        self.gestoria_erp_provider = values.get("GESTORIA_ERP_PROVIDER", self.gestoria_erp_provider)
 
     @property
     def database_path(self) -> Path:

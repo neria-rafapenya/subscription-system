@@ -5,13 +5,13 @@ El repositorio separa el motor común de suscripciones del catálogo que represe
 ## Módulos incluidos
 
 - `maintenance`: demo original de mantenimiento.
-- `gestoria`: contabilidad, fiscalidad, laboral y consultas prioritarias.
+- `gestoria`: documentos, citas, mensajes, notificaciones y chatbot IA de demostración.
 - `bufete`: consultas jurídicas, revisión documental, plazos y atención prioritaria.
 
 Cada manifiesto define:
 
 - `id`, `display_name`, `description` y `module_version`.
-- `services`: catálogo de servicios con `id`, `name`, `description` y `minimum_tier` (`basic` o `premium`).
+- `services`: catálogo de servicios con `id`, `name`, `description` y `minimum_tier` (`free`, `basic` o `premium`). Los servicios `free` no requieren suscripción.
 - `plans`: planes con `id`, nombre, descripción, importe en céntimos, moneda, intervalo y nivel.
 
 Premium incluye automáticamente los servicios de nivel básico porque esa regla pertenece al motor común, no al módulo.
@@ -57,6 +57,12 @@ Después hay que reiniciar el backend y recargar cliente y backoffice. Ambos mos
 
 Para módulos basados únicamente en manifiesto no es necesario modificar el núcleo. Los plugins backend y backoffice se descubren desde el directorio `modules`; las extensiones de cliente se asocian mediante el registro de compilación de Expo, porque React Native necesita conocer sus componentes al empaquetar. Si el sector necesita reglas de negocio que no caben en el contrato común, se tratará como una extensión explícita y se revisará antes de incorporarla.
 
+## Backoffice de Gestoría
+
+El módulo activo por defecto es `gestoria` y su backoffice se carga automáticamente desde `modules/gestoria/backoffice/index.jsx`. En desarrollo local aparece directamente, sin pantalla para introducir un token de activación del módulo. El panel permite administrar clientes y realizar CRUD de documentos, citas, mensajes y notificaciones, además de consultar las sesiones del chatbot.
+
+Esto no significa que el backend quede abierto al publicar la aplicación: en `integration` y `production` las rutas sectoriales exigen autenticación administrativa. La futura sustitución será un usuario admin con Cognito/RBAC, no un token de selección de módulo.
+
 ## Plugins sectoriales
 
 Un módulo puede incluir lógica propia además del manifiesto. El contrato actual permite:
@@ -71,6 +77,24 @@ modules/<id>/
 
 El backend común carga automáticamente `backend/plugin.py` si el manifiesto lo declara. El backoffice común descubre automáticamente `backoffice/index.jsx`. El cliente utiliza un adaptador visual común para que el código de la extensión siga dentro del módulo y sea compatible con Expo Web y móvil.
 
+## Módulo Gestoría
+
+`modules/gestoria` es el módulo sectorial activo de referencia. Incluye:
+
+- subida y consulta de documentación desde la aplicación y el backoffice;
+- agenda de citas con disponibilidad, modificación, cancelación y recordatorios;
+- adaptador de agenda local preparado para conectarse a un ERP o scheduler corporativo;
+- mensajes y notificaciones por tipo, lectura y respuesta;
+- estado y progreso de trámites, con resultado cuando esté disponible;
+- solicitudes laborales de vacaciones, altas, incidencias y nóminas;
+- herramientas gratuitas de captación: sueldo neto, cuota de autónomos, simulador IVA/IRPF trimestral y calendario fiscal orientativo;
+- límites de documentos de 2 MB en Básico y 250 MB en Premium;
+- contrato ERP común para vincular toda la información persistente del módulo;
+- chatbot Premium en modo simulado, listo para conectar un proveedor LLM;
+- tablas propias y almacenamiento bajo el directorio del módulo.
+
+Todas sus rutas quedan bajo `/modules/gestoria`. La aplicación cliente muestra la extensión del módulo activo y el backoffice carga su panel especializado.
+
 ## Módulo Sanidad
 
 `modules/sanidad` es el primer ejemplo de módulo con lógica propia. Incluye:
@@ -82,7 +106,7 @@ El backend común carga automáticamente `backend/plugin.py` si el manifiesto lo
 - chatbot en modo simulado, preparado para conectar posteriormente un proveedor LLM;
 - panel de backoffice con indicadores, pacientes, documentos, citas y ficha sanitaria completa.
 
-Los endpoints específicos quedan bajo `/modules/sanidad`. Las rutas del backoffice exigen `X-Backoffice-Token`; en desarrollo se usa `local-backoffice-demo` si no se configura otro valor. El panel solicita el token en pantalla y no lo incluye en el bundle JavaScript.
+Los endpoints específicos quedan bajo `/modules/sanidad`. Es un módulo alternativo y conserva su protección administrativa específica.
 
 Los datos sanitarios son especialmente sensibles. Antes de integración o producción habrá que sustituir el token local por roles de Cognito, añadir auditoría completa, cifrado y políticas de retención, además de revisar el tratamiento RGPD con asesoramiento especializado.
 

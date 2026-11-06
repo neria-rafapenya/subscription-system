@@ -7,6 +7,7 @@ config.resolver.extraNodeModules = {
   ...(config.resolver.extraNodeModules || {}),
   '@babel/runtime': path.resolve(__dirname, 'node_modules/@babel/runtime'),
   react: path.resolve(__dirname, 'node_modules/react'),
+  'expo-document-picker': path.resolve(__dirname, 'node_modules/expo-document-picker'),
 };
 const defaultResolveRequest = config.resolver.resolveRequest;
 

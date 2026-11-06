@@ -2,13 +2,15 @@ export type Service = {
   id: string;
   name: string;
   description: string;
-  minimum_tier: 'basic' | 'premium';
+  minimum_tier: 'free' | 'basic' | 'premium';
   included?: boolean;
   subscription_tier?: 'basic' | 'premium' | null;
   image_url?: string | null;
   image_filename?: string | null;
   attachment_url?: string | null;
   attachment_filename?: string | null;
+  details?: string | null;
+  usage?: string | null;
 };
 
 export type Plan = {
@@ -60,6 +62,8 @@ export type Notification = {
   title: string;
   body: string;
   status: string;
+  type?: string;
+  read_at?: string | null;
   created_at: string;
 };
 

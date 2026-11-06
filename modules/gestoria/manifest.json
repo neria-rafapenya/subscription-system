@@ -3,14 +3,101 @@
   "module_version": "1.0.0",
   "display_name": "Gestoría",
   "description": "Servicios recurrentes de gestión administrativa, fiscal y laboral.",
+  "backend_plugin": "backend/plugin.py",
+  "client_extension": "client/GestoriaExtension.tsx",
+  "backoffice_extension": "backoffice/index.jsx",
   "services": [
-    { "id": "gestoria-contabilidad", "name": "Gestión contable mensual", "description": "Registro y revisión periódica de la contabilidad del cliente.", "minimum_tier": "basic" },
-    { "id": "gestoria-fiscal", "name": "Obligaciones fiscales", "description": "Preparación y seguimiento de las obligaciones fiscales recurrentes.", "minimum_tier": "basic" },
-    { "id": "gestoria-laboral", "name": "Gestión laboral", "description": "Soporte para nóminas, contratos y gestiones laborales.", "minimum_tier": "premium" },
-    { "id": "gestoria-consulta-prioritaria", "name": "Consulta prioritaria", "description": "Atención preferente para consultas de gestión y trámites.", "minimum_tier": "premium" }
+    {
+      "id": "gestoria-calculadora-sueldo-neto",
+      "name": "Calculadora sueldo neto",
+      "description": "Estima el sueldo neto mensual a partir del bruto y las retenciones.",
+      "details": "Herramienta gratuita orientativa para captación. No sustituye una nómina ni un cálculo fiscal profesional.",
+      "usage": "Introduce salario bruto anual, pagas y porcentajes estimados de Seguridad Social e IRPF.",
+      "minimum_tier": "free"
+    },
+    {
+      "id": "gestoria-calculadora-autonomos",
+      "name": "Calculadora cuota autónomos",
+      "description": "Calcula una estimación orientativa de la cuota mensual de autónomos.",
+      "details": "Herramienta gratuita de simulación. La cuota real depende de la normativa y de los datos del trabajador.",
+      "usage": "Introduce la base o rendimiento mensual estimado y consulta la cuota aproximada.",
+      "minimum_tier": "free"
+    },
+    {
+      "id": "gestoria-simulador-iva-irpf",
+      "name": "Simulador IVA / IRPF trimestral",
+      "description": "Simula el resultado orientativo de IVA e IRPF de un trimestre.",
+      "details": "Permite estimar el IVA repercutido, el IVA soportado y la retención de IRPF.",
+      "usage": "Introduce ingresos, gastos y porcentaje de IRPF para obtener una estimación.",
+      "minimum_tier": "free"
+    },
+    {
+      "id": "gestoria-calendario-fiscal",
+      "name": "Calendario fiscal del año",
+      "description": "Consulta las principales fechas fiscales orientativas del año.",
+      "details": "Las fechas son informativas y deben contrastarse con el calendario oficial aplicable a cada contribuyente.",
+      "usage": "Selecciona el año para consultar los hitos trimestrales y los avisos generales.",
+      "minimum_tier": "free"
+    },
+    {
+      "id": "gestoria-documentos",
+      "name": "Subida y gestión de documentos",
+      "description": "Sube, consulta y organiza la documentación de tu expediente.",
+      "details": "El plan Básico permite documentos de hasta 2 MB. Premium amplía el límite hasta 250 MB.",
+      "usage": "Selecciona un documento para subirlo y pulsa sobre un documento existente para abrirlo.",
+      "minimum_tier": "basic"
+    },
+    {
+      "id": "gestoria-citas",
+      "name": "Solicitud y gestión de citas",
+      "description": "Consulta disponibilidad y solicita, modifica o cancela citas con tu gestor.",
+      "details": "La disponibilidad se obtiene mediante un adaptador de agenda. La demo usa una agenda local y el contrato queda preparado para un ERP corporativo.",
+      "usage": "Elige gestor, modalidad y horario disponible. Las citas se pueden modificar o cancelar mientras estén abiertas.",
+      "minimum_tier": "basic"
+    },
+    {
+      "id": "gestoria-mensajes",
+      "name": "Mensajes",
+      "description": "Comunícate con la gestoría y responde a sus conversaciones.",
+      "details": "Los mensajes se organizan por conversación, distinguen su tipo y muestran si están leídos.",
+      "usage": "Envía un asunto y un mensaje. Puedes marcar las respuestas como leídas y responder desde la aplicación.",
+      "minimum_tier": "basic"
+    },
+    {
+      "id": "gestoria-notificaciones",
+      "name": "Mensajes y notificaciones",
+      "description": "Recibe avisos de citas y comunicaciones clasificadas por importancia.",
+      "details": "Cada aviso conserva su tipo, estado y fecha prevista. Los avisos urgentes se identifican visualmente.",
+      "usage": "Abre un aviso para marcarlo como leído y consulta su estado desde la aplicación.",
+      "minimum_tier": "basic"
+    },
+    {
+      "id": "gestoria-chatbot",
+      "name": "Chatbot IA",
+      "description": "Consulta dudas de gestoría mediante un asistente conversacional.",
+      "details": "Es una función Premium. La demo funciona con respuestas simuladas y queda preparada para conectar un proveedor LLM.",
+      "usage": "Inicia una conversación y escribe tu consulta. La conexión con IA se configurará posteriormente.",
+      "minimum_tier": "premium"
+    },
+    {
+      "id": "gestoria-estado-tramites",
+      "name": "Estado de trámites",
+      "description": "Consulta el curso, progreso y resultado de tus trámites.",
+      "details": "La información se guarda con un identificador de sincronización para poder cotejarla con el ERP corporativo.",
+      "usage": "Consulta el estado, el porcentaje de avance y el resultado disponible de cada trámite.",
+      "minimum_tier": "basic"
+    },
+    {
+      "id": "gestoria-laboral",
+      "name": "Laboral (incidencias y nóminas)",
+      "description": "Comunica vacaciones, altas, incidencias y consultas de nómina mediante formularios.",
+      "details": "Las solicitudes quedan registradas y preparadas para enviarse al sistema laboral o ERP corporativo.",
+      "usage": "Selecciona el tipo de solicitud, completa el formulario y consulta su estado desde la aplicación.",
+      "minimum_tier": "premium"
+    }
   ],
   "plans": [
-    { "id": "gestoria-basic", "name": "Gestoría Básica", "description": "Contabilidad y obligaciones fiscales esenciales.", "amount_cents": 3900, "currency": "EUR", "interval": "month", "tier": "basic" },
-    { "id": "gestoria-premium", "name": "Gestoría Premium", "description": "Servicios básicos, gestión laboral y consultas prioritarias.", "amount_cents": 8900, "currency": "EUR", "interval": "month", "tier": "premium" }
+    { "id": "gestoria-basic", "name": "Básico", "description": "Documentos hasta 2 MB, citas, mensajes, notificaciones y estado de trámites.", "amount_cents": 3900, "currency": "EUR", "interval": "month", "tier": "basic" },
+    { "id": "gestoria-premium", "name": "Premium", "description": "Todo lo del plan Básico, chatbot IA, documentos hasta 250 MB y servicios laborales.", "amount_cents": 8900, "currency": "EUR", "interval": "month", "tier": "premium" }
   ]
 }

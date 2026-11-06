@@ -62,6 +62,15 @@ def vertical_description() -> str:
     return str(load_vertical_module().get("description", ""))
 
 
+def service_catalog() -> dict[str, dict[str, Any]]:
+    """Return the active module's presentation metadata indexed by service id."""
+    return {
+        str(item["id"]): dict(item)
+        for item in load_vertical_module()["services"]
+        if isinstance(item, dict) and item.get("id")
+    }
+
+
 def seed_services() -> list[tuple[str, str, str, str]]:
     return [
         (str(item["id"]), str(item["name"]), str(item["description"]), str(item.get("minimum_tier", "basic")))

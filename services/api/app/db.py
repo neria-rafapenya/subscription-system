@@ -230,13 +230,47 @@ def seed(conn: sqlite3.Connection) -> None:
     }
     services = [service for service in seed_services() if f"deleted-service:{service[0]}" not in deleted_seed_services]
     conn.executemany(
-        "INSERT OR IGNORE INTO services (id, name, description, minimum_tier) VALUES (?, ?, ?, ?)",
+        """
+        INSERT INTO services (id, name, description, minimum_tier, active)
+        VALUES (?, ?, ?, ?, 1)
+        ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            description = excluded.description,
+            minimum_tier = excluded.minimum_tier,
+            active = 1
+        """,
         services,
     )
+    current_service_ids = {service[0] for service in services}
+    stale_ids = [
+        row[0] for row in conn.execute("SELECT id FROM services WHERE active = 1").fetchall()
+        if row[0] not in current_service_ids
+    ]
+    if stale_ids:
+        conn.executemany("UPDATE services SET active = 0 WHERE id = ?", [(service_id,) for service_id in stale_ids])
+    plans = seed_plans()
     conn.executemany(
-        "INSERT OR IGNORE INTO plans (id, name, description, amount_cents, currency, interval, tier) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        seed_plans(),
+        """
+        INSERT INTO plans (id, name, description, amount_cents, currency, interval, tier, active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            description = excluded.description,
+            amount_cents = excluded.amount_cents,
+            currency = excluded.currency,
+            interval = excluded.interval,
+            tier = excluded.tier,
+            active = 1
+        """,
+        plans,
     )
+    current_plan_ids = {plan[0] for plan in plans}
+    stale_plan_ids = [
+        row[0] for row in conn.execute("SELECT id FROM plans WHERE active = 1").fetchall()
+        if row[0] not in current_plan_ids
+    ]
+    if stale_plan_ids:
+        conn.executemany("UPDATE plans SET active = 0 WHERE id = ?", [(plan_id,) for plan_id in stale_plan_ids])
     conn.execute(
         "INSERT OR IGNORE INTO customers (id, cognito_sub, name, email) VALUES (?, ?, ?, ?)",
         ("customer-local", "local-user", "Usuario local", "demo@example.test"),

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, AppState, Image, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, AppState, Image, Linking, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 import { api, AppConfig, AuthUser, environment, Notification, PayPalConfig, PendingCheckout, Plan, Service, Subscription } from './src/api';
 import { getClientModule } from './src/moduleRegistry';
 import { AppDialog, AppDialogState } from './src/components/AppDialog';
+import { BrandLogo } from './src/components/BrandLogo';
 import { PayPalSubscriptionCheckout } from './src/components/PayPalSubscriptionCheckout';
 import { PolicyModal } from './src/components/PolicyModal';
 import { normalizeSpanishPersonId } from './src/validation';
@@ -41,6 +42,8 @@ export default function App() {
   const [policiesAccepted, setPoliciesAccepted] = useState(false);
   const [policyModalVisible, setPolicyModalVisible] = useState(false);
   const [dialog, setDialog] = useState<AppDialogState | null>(null);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   const showDialog = (nextDialog: AppDialogState) => setDialog(nextDialog);
 
@@ -311,6 +314,7 @@ export default function App() {
     setTaxId('');
     setPoliciesAccepted(false);
     setPolicyModalVisible(false);
+    setDrawerVisible(false);
     setAuthMode('login');
     setMessage('Sesión cerrada.');
   };
@@ -345,9 +349,36 @@ export default function App() {
     });
   };
 
+  const profileInitial = user?.name?.trim().charAt(0).toUpperCase() || 'U';
+  const openProfile = () => {
+    setDrawerVisible(false);
+    if (!loggedIn) {
+      showDialog({ kind: 'info', title: 'Perfil', message: 'Inicia sesión o crea una cuenta para consultar tu perfil.' });
+      return;
+    }
+    showDialog({ kind: 'info', title: 'Mi perfil', message: `${user?.name || 'Usuario'}\n${user?.email || ''}` });
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="dark" />
+      <View style={styles.appHeader}>
+        <View style={styles.brandRow}>
+          <BrandLogo size={42} />
+          <View>
+            <Text style={styles.brandName}>WAD Gestoría</Text>
+            <Text style={styles.brandTagline}>Gestión clara, en un solo lugar</Text>
+          </View>
+        </View>
+        <View style={styles.headerActions}>
+          <Pressable accessibilityLabel="Abrir menú" style={styles.headerIconButton} onPress={() => setDrawerVisible(true)}>
+            <Text style={styles.headerIconText}>☰</Text>
+          </Pressable>
+          <Pressable accessibilityLabel="Abrir perfil" style={styles.profileButton} onPress={openProfile}>
+            <Text style={styles.profileButtonText}>{loggedIn ? profileInitial : '👤'}</Text>
+          </Pressable>
+        </View>
+      </View>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.eyebrow}>SUBSCRIPTION SYSTEM · {environment.toUpperCase()}</Text>
         <View style={styles.topRow}>
@@ -449,7 +480,8 @@ export default function App() {
             <Text style={styles.cardTitle}>{service.name}</Text>
             {service.included && service.image_url ? <Image source={{ uri: service.image_url }} style={styles.serviceImage} accessibilityLabel={service.name} /> : null}
             <Text style={styles.cardText}>{service.description}</Text>
-            <Text style={service.included ? styles.included : styles.locked}>{service.included ? 'Incluido en tu suscripción' : service.minimum_tier === 'premium' ? 'Disponible con Premium' : 'Contrata una suscripción para acceder'}</Text>
+            <Text style={service.included ? styles.included : styles.locked}>{service.minimum_tier === 'free' ? 'Herramienta gratuita' : service.included ? 'Incluido en tu suscripción' : service.minimum_tier === 'premium' ? 'Disponible con Premium' : 'Contrata una suscripción para acceder'}</Text>
+            <Pressable style={styles.linkButton} onPress={() => setSelectedService(service)}><Text style={styles.linkButtonText}>Ver detalle y usabilidad</Text></Pressable>
             {service.included && service.attachment_url ? <Pressable onPress={() => void Linking.openURL(service.attachment_url as string)}><Text style={styles.attachmentLink}>Abrir documento adjunto{service.attachment_filename ? ` · ${service.attachment_filename}` : ''}</Text></Pressable> : null}
           </View>
         ))}
@@ -485,7 +517,36 @@ export default function App() {
         ))}
         </>}
       </ScrollView>
+      <Modal transparent visible={drawerVisible} animationType="fade" onRequestClose={() => setDrawerVisible(false)}>
+        <View style={styles.drawerOverlay}>
+          <Pressable style={styles.drawerBackdrop} onPress={() => setDrawerVisible(false)} />
+          <View style={styles.drawer}>
+            <View style={styles.drawerHeader}>
+              <View style={styles.brandRow}>
+                <BrandLogo size={34} />
+                <Text style={styles.drawerTitle}>Menú</Text>
+              </View>
+              <Pressable accessibilityLabel="Cerrar menú" style={styles.drawerClose} onPress={() => setDrawerVisible(false)}><Text style={styles.drawerCloseText}>×</Text></Pressable>
+            </View>
+            {loggedIn ? <View style={styles.drawerUserCard}><Text style={styles.drawerUserName}>{user?.name || 'Usuario'}</Text><Text style={styles.drawerUserEmail}>{user?.email}</Text></View> : <Text style={styles.drawerHint}>Accede a tu cuenta para gestionar tus servicios y suscripciones.</Text>}
+            <Pressable style={styles.drawerItem} onPress={() => { setDrawerVisible(false); setMessage('Estás en el inicio de la aplicación.'); }}><Text style={styles.drawerItemText}>Inicio</Text></Pressable>
+            <Pressable style={styles.drawerItem} onPress={() => { setDrawerVisible(false); setMessage('Las herramientas gratuitas están disponibles en el módulo de gestoría.'); }}><Text style={styles.drawerItemText}>Herramientas gratuitas</Text></Pressable>
+            <Pressable style={styles.drawerItem} onPress={() => { setDrawerVisible(false); setMessage('Consulta los servicios y planes disponibles en el inicio.'); }}><Text style={styles.drawerItemText}>Servicios y suscripciones</Text></Pressable>
+            <Pressable style={styles.drawerItem} onPress={openProfile}><Text style={styles.drawerItemText}>Mi perfil</Text></Pressable>
+            {loggedIn ? <Pressable style={styles.drawerLogout} onPress={logout}><Text style={styles.drawerLogoutText}>Cerrar sesión</Text></Pressable> : null}
+          </View>
+        </View>
+      </Modal>
       <PolicyModal visible={policyModalVisible} onClose={() => setPolicyModalVisible(false)} onAccept={() => { setPoliciesAccepted(true); setPolicyModalVisible(false); }} />
+      <AppDialog
+        dialog={selectedService ? {
+          kind: selectedService.included ? 'success' : 'info',
+          title: selectedService.name,
+          message: `${selectedService.details ?? selectedService.description}\n\nCómo se utiliza\n${selectedService.usage ?? 'Consulta las indicaciones que aparezcan al abrir la función.'}`,
+          confirmLabel: 'Cerrar',
+        } : null}
+        onClose={() => setSelectedService(null)}
+      />
       <AppDialog dialog={dialog} onClose={() => setDialog(null)} />
     </SafeAreaView>
   );
@@ -493,6 +554,30 @@ export default function App() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#f8fafc' },
+  appHeader: { width: '100%', maxWidth: 760, alignSelf: 'center', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', backgroundColor: '#fff', gap: 12 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+  brandName: { color: '#0f172a', fontSize: 16, fontWeight: '800' },
+  brandTagline: { color: '#64748b', fontSize: 11, marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerIconButton: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff' },
+  headerIconText: { color: '#1d4ed8', fontSize: 22, fontWeight: '700' },
+  profileButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1d4ed8' },
+  profileButtonText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  drawerOverlay: { flex: 1, flexDirection: 'row', backgroundColor: 'rgba(15, 23, 42, .42)' },
+  drawerBackdrop: { flex: 1 },
+  drawer: { width: 300, maxWidth: '86%', backgroundColor: '#fff', padding: 20, gap: 8, shadowColor: '#0f172a', shadowOpacity: .25, shadowRadius: 20, shadowOffset: { width: 4, height: 0 }, elevation: 10 },
+  drawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  drawerTitle: { color: '#0f172a', fontSize: 20, fontWeight: '800' },
+  drawerClose: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9' },
+  drawerCloseText: { color: '#475569', fontSize: 26, lineHeight: 28 },
+  drawerUserCard: { backgroundColor: '#eff6ff', borderRadius: 12, padding: 12, marginBottom: 8 },
+  drawerUserName: { color: '#1e3a8a', fontSize: 15, fontWeight: '800' },
+  drawerUserEmail: { color: '#475569', fontSize: 12, marginTop: 3 },
+  drawerHint: { color: '#64748b', fontSize: 13, lineHeight: 19, marginBottom: 8 },
+  drawerItem: { borderRadius: 10, paddingVertical: 12, paddingHorizontal: 12 },
+  drawerItemText: { color: '#1e293b', fontSize: 15, fontWeight: '700' },
+  drawerLogout: { borderColor: '#fecaca', borderWidth: 1, borderRadius: 10, marginTop: 12, padding: 12 },
+  drawerLogoutText: { color: '#b91c1c', fontSize: 15, fontWeight: '800' },
   container: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 24, gap: 12 },
   eyebrow: { color: '#1d4ed8', fontSize: 12, fontWeight: '700', letterSpacing: 1 },
   title: { color: '#0f172a', fontSize: 32, fontWeight: '800', marginTop: 6 },
