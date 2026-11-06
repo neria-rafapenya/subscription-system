@@ -62,6 +62,10 @@ def vertical_description() -> str:
     return str(load_vertical_module().get("description", ""))
 
 
+def vertical_version() -> str:
+    return str(load_vertical_module().get("module_version", "0.0.0"))
+
+
 def service_catalog() -> dict[str, dict[str, Any]]:
     """Return the active module's presentation metadata indexed by service id."""
     return {

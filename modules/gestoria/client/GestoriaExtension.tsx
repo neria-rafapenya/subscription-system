@@ -267,7 +267,7 @@ export default function GestoriaExtension({ accessToken, ui, activeSection, show
 
   if (activeSection) return <View style={styles.container}>
     {freeToolsModal}
-    {activeSection !== 'hidden' ? <><Text style={styles.title}>Módulo Gestoría</Text><Text style={styles.subtitle}>Servicios de documentación, citas, mensajería y asistencia.</Text>{moduleStatus ? <Text style={styles.planHint}>Plan {moduleStatus.tier === 'premium' ? 'Premium' : 'Básico'} · documentos de hasta {moduleStatus.document_limit_label} · agenda: {moduleStatus.scheduler_provider} · ERP: {moduleStatus.erp_provider}</Text> : null}{notice ? <Text style={styles.notice}>{notice}</Text> : null}{renderActiveSection()}</> : null}
+    {activeSection !== 'hidden' ? <>{notice ? <Text style={styles.notice}>{notice}</Text> : null}{renderActiveSection()}</> : null}
   </View>;
 
   return <View style={styles.container}>

@@ -78,6 +78,9 @@ export type AppConfig = {
   vertical_module: string;
   vertical_display_name: string;
   vertical_description: string;
+  vertical_version: string;
+  scheduler_provider?: string | null;
+  erp_provider?: string | null;
   local_auth_enabled: boolean;
   auth_provider: string;
   payment_provider: string;

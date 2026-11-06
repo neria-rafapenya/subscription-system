@@ -23,7 +23,7 @@ from .security import (
 from .storage import delete_storage_key, public_file_url, save_service_upload
 from .paypal import PayPalAPIError, PayPalConfigurationError, cancel_subscription as paypal_cancel_subscription, create_subscription as paypal_create_subscription, get_subscription as paypal_get_subscription, paypal_settings, plan_id_for_tier
 from .validation import normalize_spanish_person_id
-from .vertical_module import load_vertical_module, register_vertical_backend, service_catalog, vertical_description, vertical_display_name, vertical_module_id
+from .vertical_module import load_vertical_module, register_vertical_backend, service_catalog, vertical_description, vertical_display_name, vertical_module_id, vertical_version
 
 
 settings = get_settings()
@@ -141,6 +141,9 @@ def public_config() -> dict[str, str | bool | None]:
         "vertical_module": vertical_module_id(),
         "vertical_display_name": vertical_display_name(),
         "vertical_description": vertical_description(),
+        "vertical_version": vertical_version(),
+        "scheduler_provider": settings.gestoria_scheduler_provider if vertical_module_id() == "gestoria" else None,
+        "erp_provider": settings.gestoria_erp_provider if vertical_module_id() == "gestoria" else None,
         "local_auth_enabled": settings.local_auth_enabled,
         "auth_provider": "local" if settings.local_auth_enabled else "cognito",
         "payment_provider": settings.payment_provider,

@@ -215,6 +215,10 @@ export default function App() {
 
   const hasCurrentSubscription = subscriptions.some((subscription) => ['pending', 'active', 'grace_period', 'suspended'].includes(subscription.status));
   const hasOpenCheckout = pendingCheckouts.length > 0 || Boolean(checkoutId);
+  const currentSubscription = subscriptions.find((subscription) => ['pending', 'active', 'grace_period', 'suspended'].includes(subscription.status));
+  const currentPlan = currentSubscription ? plans.find((plan) => plan.id === currentSubscription.plan_id) : null;
+  const drawerPlanLabel = currentPlan?.name ?? 'Sin suscripción';
+  const drawerDocumentLimit = currentPlan?.tier === 'premium' ? '250 MB' : '2 MB';
   const ModuleExtension = getClientModule(appConfig?.vertical_module);
 
   const registerPayPalSubscription = async (providerSubscriptionId: string) => {
@@ -654,6 +658,13 @@ export default function App() {
             <Pressable style={styles.drawerItem} onPress={openProfile}><Text style={styles.drawerItemText}>Mi perfil</Text></Pressable>
             {loggedIn ? <Pressable style={styles.drawerLogout} onPress={logout}><Text style={styles.drawerLogoutText}>Cerrar sesión</Text></Pressable> : null}
             </ScrollView>
+            {loggedIn && appConfig?.vertical_module === 'gestoria' ? <View style={styles.drawerModuleInfo}>
+              <Text style={styles.drawerModuleName}>{appConfig.vertical_display_name}</Text>
+              <Text style={styles.drawerModuleDescription}>{appConfig.vertical_description}</Text>
+              <Text style={styles.drawerModuleMeta}>Plan {drawerPlanLabel} · documentos de hasta {drawerDocumentLimit}</Text>
+              <Text style={styles.drawerModuleMeta}>Agenda: {appConfig.scheduler_provider === 'local' ? 'local-demo' : appConfig.scheduler_provider ?? 'no configurada'} · ERP: {appConfig.erp_provider ?? 'no configurado'}</Text>
+              <Text style={styles.drawerModuleVersion}>Versión {appConfig.vertical_version}</Text>
+            </View> : null}
           </View>
         </View>
       </Modal>
@@ -702,6 +713,11 @@ const styles = StyleSheet.create({
   drawerItemText: { color: '#1e293b', fontSize: 15, fontWeight: '700' },
   drawerLogout: { borderColor: '#fecaca', borderWidth: 1, borderRadius: 10, marginTop: 12, padding: 12 },
   drawerLogoutText: { color: '#b91c1c', fontSize: 15, fontWeight: '800' },
+  drawerModuleInfo: { borderTopColor: '#e2e8f0', borderTopWidth: 1, gap: 4, marginTop: 10, paddingTop: 12 },
+  drawerModuleName: { color: '#0f172a', fontSize: 14, fontWeight: '800' },
+  drawerModuleDescription: { color: '#64748b', fontSize: 11, lineHeight: 16 },
+  drawerModuleMeta: { color: '#475569', fontSize: 11, lineHeight: 15 },
+  drawerModuleVersion: { color: '#94a3b8', fontSize: 10, fontWeight: '700', marginTop: 2 },
   legacyDashboardHidden: { display: 'none' },
   container: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 24, gap: 12 },
   eyebrow: { color: '#1d4ed8', fontSize: 12, fontWeight: '700', letterSpacing: 1 },
