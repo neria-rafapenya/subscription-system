@@ -215,10 +215,13 @@ export default function App() {
 
   const hasCurrentSubscription = subscriptions.some((subscription) => ['pending', 'active', 'grace_period', 'suspended'].includes(subscription.status));
   const hasOpenCheckout = pendingCheckouts.length > 0 || Boolean(checkoutId);
+  const hasUsableSubscription = subscriptions.some((subscription) => ['active', 'grace_period'].includes(subscription.status));
   const currentSubscription = subscriptions.find((subscription) => ['pending', 'active', 'grace_period', 'suspended'].includes(subscription.status));
   const currentPlan = currentSubscription ? plans.find((plan) => plan.id === currentSubscription.plan_id) : null;
   const drawerPlanLabel = currentPlan?.name ?? 'Sin suscripción';
   const drawerDocumentLimit = currentPlan?.tier === 'premium' ? '250 MB' : '2 MB';
+  const premiumScreens: AppScreen[] = ['labor', 'chatbot'];
+  const protectedScreens: AppScreen[] = ['appointments', 'documents', 'procedures', 'labor', 'messages', 'notifications', 'chatbot'];
   const ModuleExtension = getClientModule(appConfig?.vertical_module);
 
   const registerPayPalSubscription = async (providerSubscriptionId: string) => {
@@ -371,6 +374,16 @@ export default function App() {
   };
 
   const navigate = (screen: AppScreen) => {
+    if (protectedScreens.includes(screen) && !hasUsableSubscription) {
+      setDrawerVisible(false);
+      showDialog({ kind: 'warning', title: 'Suscripción necesaria', message: 'Este servicio requiere una suscripción activa. Accede a “Servicios y planes” para contratarla.' });
+      return;
+    }
+    if (premiumScreens.includes(screen) && currentPlan?.tier !== 'premium') {
+      setDrawerVisible(false);
+      showDialog({ kind: 'warning', title: 'Plan Premium necesario', message: 'Este servicio está incluido únicamente en el plan Premium.' });
+      return;
+    }
     setActiveScreen(screen);
     setDrawerVisible(false);
     setSelectedPlan(null);
@@ -644,13 +657,13 @@ export default function App() {
             <ScrollView style={styles.drawerMenuScroll} contentContainerStyle={styles.drawerMenuContent}>
             <Pressable style={[styles.drawerItem, activeScreen === 'home' ? styles.drawerItemActive : null]} onPress={() => navigate('home')}><Text style={styles.drawerItemText}>Inicio</Text></Pressable>
             <Text style={styles.drawerGroupTitle}>Gestoría</Text>
-            <Pressable style={[styles.drawerItem, activeScreen === 'appointments' ? styles.drawerItemActive : null]} onPress={() => navigate('appointments')}><Text style={styles.drawerItemText}>Citas y visitas</Text></Pressable>
-            <Pressable style={[styles.drawerItem, activeScreen === 'documents' ? styles.drawerItemActive : null]} onPress={() => navigate('documents')}><Text style={styles.drawerItemText}>Documentos</Text></Pressable>
-            <Pressable style={[styles.drawerItem, activeScreen === 'procedures' ? styles.drawerItemActive : null]} onPress={() => navigate('procedures')}><Text style={styles.drawerItemText}>Estado de trámites</Text></Pressable>
-            <Pressable style={[styles.drawerItem, activeScreen === 'labor' ? styles.drawerItemActive : null]} onPress={() => navigate('labor')}><Text style={styles.drawerItemText}>Laboral</Text></Pressable>
-            <Pressable style={[styles.drawerItem, activeScreen === 'messages' ? styles.drawerItemActive : null]} onPress={() => navigate('messages')}><Text style={styles.drawerItemText}>Mensajes</Text></Pressable>
-            <Pressable style={[styles.drawerItem, activeScreen === 'notifications' ? styles.drawerItemActive : null]} onPress={() => navigate('notifications')}><Text style={styles.drawerItemText}>Notificaciones</Text></Pressable>
-            <Pressable style={[styles.drawerItem, activeScreen === 'chatbot' ? styles.drawerItemActive : null]} onPress={() => navigate('chatbot')}><Text style={styles.drawerItemText}>Chatbot IA</Text></Pressable>
+            <Pressable disabled={!hasUsableSubscription} style={[styles.drawerItem, activeScreen === 'appointments' ? styles.drawerItemActive : null, !hasUsableSubscription ? styles.drawerItemDisabled : null]} onPress={() => navigate('appointments')}><Text style={[styles.drawerItemText, !hasUsableSubscription ? styles.drawerItemTextDisabled : null]}>Citas y visitas{!hasUsableSubscription ? ' · requiere suscripción' : ''}</Text></Pressable>
+            <Pressable disabled={!hasUsableSubscription} style={[styles.drawerItem, activeScreen === 'documents' ? styles.drawerItemActive : null, !hasUsableSubscription ? styles.drawerItemDisabled : null]} onPress={() => navigate('documents')}><Text style={[styles.drawerItemText, !hasUsableSubscription ? styles.drawerItemTextDisabled : null]}>Documentos{!hasUsableSubscription ? ' · requiere suscripción' : ''}</Text></Pressable>
+            <Pressable disabled={!hasUsableSubscription} style={[styles.drawerItem, activeScreen === 'procedures' ? styles.drawerItemActive : null, !hasUsableSubscription ? styles.drawerItemDisabled : null]} onPress={() => navigate('procedures')}><Text style={[styles.drawerItemText, !hasUsableSubscription ? styles.drawerItemTextDisabled : null]}>Estado de trámites{!hasUsableSubscription ? ' · requiere suscripción' : ''}</Text></Pressable>
+            <Pressable disabled={!hasUsableSubscription || currentPlan?.tier !== 'premium'} style={[styles.drawerItem, activeScreen === 'labor' ? styles.drawerItemActive : null, !hasUsableSubscription || currentPlan?.tier !== 'premium' ? styles.drawerItemDisabled : null]} onPress={() => navigate('labor')}><Text style={[styles.drawerItemText, !hasUsableSubscription || currentPlan?.tier !== 'premium' ? styles.drawerItemTextDisabled : null]}>Laboral · Premium</Text></Pressable>
+            <Pressable disabled={!hasUsableSubscription} style={[styles.drawerItem, activeScreen === 'messages' ? styles.drawerItemActive : null, !hasUsableSubscription ? styles.drawerItemDisabled : null]} onPress={() => navigate('messages')}><Text style={[styles.drawerItemText, !hasUsableSubscription ? styles.drawerItemTextDisabled : null]}>Mensajes{!hasUsableSubscription ? ' · requiere suscripción' : ''}</Text></Pressable>
+            <Pressable disabled={!hasUsableSubscription} style={[styles.drawerItem, activeScreen === 'notifications' ? styles.drawerItemActive : null, !hasUsableSubscription ? styles.drawerItemDisabled : null]} onPress={() => navigate('notifications')}><Text style={[styles.drawerItemText, !hasUsableSubscription ? styles.drawerItemTextDisabled : null]}>Notificaciones{!hasUsableSubscription ? ' · requiere suscripción' : ''}</Text></Pressable>
+            <Pressable disabled={!hasUsableSubscription || currentPlan?.tier !== 'premium'} style={[styles.drawerItem, activeScreen === 'chatbot' ? styles.drawerItemActive : null, !hasUsableSubscription || currentPlan?.tier !== 'premium' ? styles.drawerItemDisabled : null]} onPress={() => navigate('chatbot')}><Text style={[styles.drawerItemText, !hasUsableSubscription || currentPlan?.tier !== 'premium' ? styles.drawerItemTextDisabled : null]}>Chatbot IA · Premium</Text></Pressable>
             <Text style={styles.drawerGroupTitle}>Cuenta</Text>
             <Pressable style={[styles.drawerItem, activeScreen === 'catalog' ? styles.drawerItemActive : null]} onPress={() => navigate('catalog')}><Text style={styles.drawerItemText}>Servicios y planes</Text></Pressable>
             <Pressable style={[styles.drawerItem, activeScreen === 'subscriptions' ? styles.drawerItemActive : null]} onPress={() => navigate('subscriptions')}><Text style={styles.drawerItemText}>Mis suscripciones</Text></Pressable>
@@ -709,7 +722,9 @@ const styles = StyleSheet.create({
   drawerGroupTitle: { color: '#94a3b8', fontSize: 11, fontWeight: '800', letterSpacing: 1, marginTop: 10, paddingHorizontal: 12, textTransform: 'uppercase' },
   drawerItem: { borderRadius: 10, paddingVertical: 12, paddingHorizontal: 12 },
   drawerItemActive: { backgroundColor: '#eff6ff' },
+  drawerItemDisabled: { opacity: 0.55 },
   drawerItemText: { color: '#1e293b', fontSize: 15, fontWeight: '700' },
+  drawerItemTextDisabled: { color: '#94a3b8', fontSize: 13 },
   drawerLogout: { borderColor: '#fecaca', borderWidth: 1, borderRadius: 10, marginTop: 12, padding: 12 },
   drawerLogoutText: { color: '#b91c1c', fontSize: 15, fontWeight: '800' },
   drawerModuleInfo: { borderTopColor: '#e2e8f0', borderTopWidth: 1, gap: 4, marginTop: 10, paddingTop: 12 },
