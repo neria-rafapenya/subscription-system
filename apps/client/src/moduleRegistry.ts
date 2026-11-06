@@ -6,6 +6,7 @@ export type ClientModuleProps = {
   ui: Record<string, any>;
   showFreeTools?: boolean;
   selectedFreeTool?: string;
+  activeSection?: string;
   onCloseFreeTools?: () => void;
 };
 

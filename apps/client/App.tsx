@@ -11,6 +11,7 @@ import { PolicyModal } from './src/components/PolicyModal';
 import { normalizeSpanishPersonId } from './src/validation';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
+type AppScreen = 'home' | 'appointments' | 'documents' | 'procedures' | 'labor' | 'messages' | 'notifications' | 'chatbot' | 'catalog' | 'subscriptions';
 
 export default function App() {
   const [services, setServices] = useState<Service[]>([]);
@@ -46,6 +47,7 @@ export default function App() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [freeToolsVisible, setFreeToolsVisible] = useState(false);
   const [selectedFreeTool, setSelectedFreeTool] = useState<string | null>(null);
+  const [activeScreen, setActiveScreen] = useState<AppScreen>('home');
 
   const showDialog = (nextDialog: AppDialogState) => setDialog(nextDialog);
 
@@ -319,6 +321,7 @@ export default function App() {
     setDrawerVisible(false);
     setFreeToolsVisible(false);
     setSelectedFreeTool(null);
+    setActiveScreen('home');
     setAuthMode('login');
     setMessage('Sesión cerrada.');
   };
@@ -361,6 +364,88 @@ export default function App() {
       return;
     }
     showDialog({ kind: 'info', title: 'Mi perfil', message: `${user?.name || 'Usuario'}\n${user?.email || ''}` });
+  };
+
+  const navigate = (screen: AppScreen) => {
+    setActiveScreen(screen);
+    setDrawerVisible(false);
+    setSelectedPlan(null);
+    setFreeToolsVisible(false);
+    setSelectedFreeTool(null);
+  };
+
+  const closeFreeTools = () => {
+    setFreeToolsVisible(false);
+    setSelectedFreeTool(null);
+  };
+
+  const renderFreeToolsLauncher = () => loggedIn && appConfig?.vertical_module === 'gestoria' ? <View style={styles.freeToolsLauncher}>
+    <View style={styles.freeToolsLauncherCopy}>
+      <Text style={styles.freeToolsLauncherTitle}>Herramientas gratuitas</Text>
+      <Text style={styles.freeToolsLauncherText}>Abre cada calculadora o el calendario fiscal sin contratar una suscripción.</Text>
+    </View>
+    <View style={styles.freeToolsButtons}>
+      {[
+        { id: 'salary', label: 'Sueldo neto', icon: '💶' },
+        { id: 'autonomos', label: 'Cuota autónomos', icon: '🧾' },
+        { id: 'iva-irpf', label: 'IVA / IRPF', icon: '📊' },
+        { id: 'calendario', label: 'Calendario fiscal', icon: '🗓️' },
+      ].map((tool) => <Pressable key={tool.id} accessibilityLabel={`Abrir ${tool.label}`} style={styles.freeToolButton} onPress={() => { setSelectedFreeTool(tool.id); setFreeToolsVisible(true); }}><Text style={styles.freeToolIcon}>{tool.icon}</Text><Text style={styles.freeToolButtonText}>{tool.label}</Text></Pressable>)}
+    </View>
+  </View> : null;
+
+  const renderModule = () => ModuleExtension ? <ModuleExtension accessToken={api.getAccessToken()} activeSection={activeScreen} showFreeTools={freeToolsVisible} selectedFreeTool={selectedFreeTool ?? undefined} onCloseFreeTools={closeFreeTools} ui={{ Text, TextInput, TouchableOpacity, View, Modal, Pressable, ScrollView }} /> : null;
+
+  const renderCatalog = () => <>
+    <Text style={styles.sectionTitle}>Servicios disponibles</Text>
+    {services.map((service) => <View key={service.id} style={styles.card}>
+      <Text style={styles.cardTitle}>{service.name}</Text>
+      {service.included && service.image_url ? <Image source={{ uri: service.image_url }} style={styles.serviceImage} accessibilityLabel={service.name} /> : null}
+      <Text style={styles.cardText}>{service.description}</Text>
+      <Text style={service.included ? styles.included : styles.locked}>{service.minimum_tier === 'free' ? 'Herramienta gratuita' : service.included ? 'Incluido en tu suscripción' : service.minimum_tier === 'premium' ? 'Disponible con Premium' : 'Contrata una suscripción para acceder'}</Text>
+      <Pressable style={styles.linkButton} onPress={() => setSelectedService(service)}><Text style={styles.linkButtonText}>Ver detalle y usabilidad</Text></Pressable>
+      {service.included && service.attachment_url ? <Pressable onPress={() => void Linking.openURL(service.attachment_url as string)}><Text style={styles.attachmentLink}>Abrir documento adjunto{service.attachment_filename ? ` · ${service.attachment_filename}` : ''}</Text></Pressable> : null}
+    </View>)}
+    <Text style={styles.sectionTitle}>Planes de suscripción</Text>
+    {plans.map((plan) => <View key={plan.id} style={styles.card}>
+      <View style={styles.row}><Text style={styles.cardTitle}>{plan.name}</Text><Text style={styles.price}>{(plan.amount_cents / 100).toFixed(2)} {plan.currency}/mes</Text></View>
+      <Text style={styles.cardText}>{plan.description}</Text>
+      <Pressable disabled={hasCurrentSubscription || hasOpenCheckout || Boolean(selectedPlan)} style={[styles.button, hasCurrentSubscription || hasOpenCheckout || selectedPlan ? styles.buttonDisabled : null]} onPress={() => subscribe(plan)}><Text style={styles.buttonText}>{hasCurrentSubscription ? 'Ya tienes una suscripción vigente' : hasOpenCheckout ? 'Tienes un checkout pendiente' : selectedPlan ? 'Completa los datos de facturación' : 'Iniciar suscripción'}</Text></Pressable>
+    </View>)}
+  </>;
+
+  const renderSubscriptions = () => <>
+    {checkoutId ? <View style={styles.checkoutCard}>
+      <Text style={styles.cardTitle}>Checkout pendiente</Text><Text style={styles.cardText}>Plan seleccionado: {checkoutPlanName}</Text>
+      {checkoutProvider === 'paypal' ? <>
+        <Text style={styles.cardText}>Completa el pago con PayPal dentro de la aplicación usando tu cuenta compradora de pruebas.</Text>
+        {paypalConfig?.enabled && paypalConfig.client_id && paypalConfig.environment && checkoutProviderSubscriptionId ? <PayPalSubscriptionCheckout clientId={paypalConfig.client_id} environment={paypalConfig.environment} planId={paypalConfig.plan_ids[checkoutPlanId ?? ''] ?? ''} providerSubscriptionId={checkoutProviderSubscriptionId} onSubscriptionCreated={registerPayPalSubscription} onApproved={(providerSubscriptionId) => completeCheckout(providerSubscriptionId)} onCancelled={restartPendingCheckout} onError={(errorMessage) => showDialog({ kind: 'error', title: 'No se pudo iniciar PayPal', message: errorMessage })} /> : <Text style={styles.cardText}>Preparando el pago seguro de PayPal...</Text>}
+      </> : <><Text style={styles.cardText}>Pago simulado integrado: no se introducen ni almacenan datos bancarios. Confirma el pago para completar el circuito de desarrollo.</Text><Pressable style={styles.button} onPress={() => void completeCheckout()}><Text style={styles.buttonText}>Confirmar pago simulado</Text></Pressable></>}
+      <Pressable style={styles.cancelButton} onPress={askRestartPendingCheckout}><Text style={styles.cancelButtonText}>Cancelar checkout y empezar de nuevo</Text></Pressable>
+    </View> : null}
+    {selectedPlan ? <View style={styles.billingCard}>
+      <Text style={styles.cardTitle}>Datos de facturación</Text><Text style={styles.cardText}>Necesitamos estos datos antes de iniciar el checkout de {selectedPlan.name}.</Text>
+      <TextInput multiline numberOfLines={3} style={[styles.input, styles.multilineInput]} value={billingAddress} onChangeText={setBillingAddress} placeholder="Dirección de facturación" />
+      <TextInput autoCapitalize="characters" style={styles.input} value={taxId} onChangeText={(value) => setTaxId(value.toUpperCase())} placeholder="DNI/NIE" />
+      <Pressable style={styles.policyLink} onPress={() => setPolicyModalVisible(true)}><Text style={styles.policyLinkText}>{policiesAccepted ? '✓ Políticas aceptadas · Ver de nuevo' : 'Leer y aceptar las políticas'}</Text></Pressable>
+      <View style={styles.actionRow}><Pressable style={styles.button} onPress={() => void startCheckout()}><Text style={styles.buttonText}>Continuar al checkout</Text></Pressable><Pressable style={styles.secondaryButton} onPress={() => setSelectedPlan(null)}><Text style={styles.secondaryButtonText}>Cancelar</Text></Pressable></View>
+    </View> : null}
+    {notifications.length > 0 ? <><Text style={styles.sectionTitle}>Avisos de suscripción</Text>{notifications.map((notification) => <View key={notification.id} style={styles.noticeCard}><Text style={styles.cardTitle}>{notification.title}</Text><Text style={styles.cardText}>{notification.body}</Text></View>)}</> : null}
+    <Text style={styles.sectionTitle}>Mis suscripciones</Text>
+    {subscriptions.length === 0 ? <Text style={styles.empty}>Todavía no hay suscripciones.</Text> : subscriptions.map((subscription) => <View key={subscription.id} style={styles.card}>
+      <View style={styles.row}><Text style={styles.cardTitle}>{subscription.plan_name}</Text>{Boolean(subscription.auto_renew) ? <Pressable style={styles.cancelButton} onPress={() => askCancelSubscription(subscription.id)}><Text style={styles.cancelButtonText}>No renovar</Text></Pressable> : null}</View>
+      <Text style={styles.cardText}>Estado: {subscription.status}</Text><Text style={styles.cardText}>Precio contratado: {(subscription.amount_cents / 100).toFixed(2)} {subscription.currency} / {subscription.interval}</Text>
+      {Boolean(subscription.auto_renew) ? <Text style={styles.cardText}>Renovación automática: sí</Text> : <Text style={styles.cardText}>No se renovará automáticamente. Acceso hasta: {subscription.current_period_end}</Text>}
+      {(plans.find((plan) => plan.id === subscription.plan_id)?.amount_cents ?? subscription.amount_cents) !== subscription.amount_cents ? <Pressable style={styles.button} onPress={() => askAcceptPriceChange(subscription.id)}><Text style={styles.buttonText}>Aceptar nuevo precio y renovar</Text></Pressable> : null}
+    </View>)}
+  </>;
+
+  const renderActiveDashboardScreen = () => {
+    if (activeScreen === 'home') return <><Text style={styles.sectionTitle}>Inicio</Text><Text style={styles.cardText}>Selecciona una sección desde el menú para consultar y gestionar tu cuenta.</Text>{renderFreeToolsLauncher()}{renderModule()}</>;
+    if (activeScreen === 'catalog') return <>{renderCatalog()}</>;
+    if (activeScreen === 'subscriptions') return <>{renderSubscriptions()}</>;
+    const titles: Record<string, string> = { appointments: 'Citas y visitas', documents: 'Documentos', procedures: 'Estado de trámites', labor: 'Laboral (incidencias y nóminas)', messages: 'Mensajes', notifications: 'Notificaciones', chatbot: 'Chatbot IA' };
+    return <><Text style={styles.sectionTitle}>{titles[activeScreen]}</Text>{renderModule()}</>;
   };
 
   return (
@@ -429,6 +514,7 @@ export default function App() {
         ) : null}
 
         {!loggedIn ? null : <>
+        <View style={styles.legacyDashboardHidden}>
         {loading ? <ActivityIndicator size="large" color="#1d4ed8" /> : null}
 
         {checkoutId ? <View style={styles.checkoutCard}>
@@ -490,7 +576,7 @@ export default function App() {
           </View>
         </View> : null}
 
-        {ModuleExtension ? <ModuleExtension accessToken={api.getAccessToken()} showFreeTools={freeToolsVisible} selectedFreeTool={selectedFreeTool ?? undefined} onCloseFreeTools={() => { setFreeToolsVisible(false); setSelectedFreeTool(null); }} ui={{ Text, TextInput, TouchableOpacity, View, Modal, Pressable, ScrollView }} /> : null}
+        {ModuleExtension ? <ModuleExtension accessToken={api.getAccessToken()} showFreeTools={false} selectedFreeTool={undefined} activeSection="hidden" onCloseFreeTools={closeFreeTools} ui={{ Text, TextInput, TouchableOpacity, View, Modal, Pressable, ScrollView }} /> : null}
 
         <Text style={styles.sectionTitle}>Servicios disponibles</Text>
         {services.map((service) => (
@@ -533,6 +619,8 @@ export default function App() {
             {(plans.find((plan) => plan.id === subscription.plan_id)?.amount_cents ?? subscription.amount_cents) !== subscription.amount_cents ? <Pressable style={styles.button} onPress={() => askAcceptPriceChange(subscription.id)}><Text style={styles.buttonText}>Aceptar nuevo precio y renovar</Text></Pressable> : null}
           </View>
         ))}
+        </View>
+        {renderActiveDashboardScreen()}
         </>}
       </ScrollView>
       <Modal transparent visible={drawerVisible} animationType="fade" onRequestClose={() => setDrawerVisible(false)}>
@@ -547,11 +635,22 @@ export default function App() {
               <Pressable accessibilityLabel="Cerrar menú" style={styles.drawerClose} onPress={() => setDrawerVisible(false)}><Text style={styles.drawerCloseText}>×</Text></Pressable>
             </View>
             {loggedIn ? <View style={styles.drawerUserCard}><Text style={styles.drawerUserName}>{user?.name || 'Usuario'}</Text><Text style={styles.drawerUserEmail}>{user?.email}</Text></View> : <Text style={styles.drawerHint}>Accede a tu cuenta para gestionar tus servicios y suscripciones.</Text>}
-            <Pressable style={styles.drawerItem} onPress={() => { setDrawerVisible(false); setMessage('Estás en el inicio de la aplicación.'); }}><Text style={styles.drawerItemText}>Inicio</Text></Pressable>
-            <Pressable style={styles.drawerItem} onPress={() => { setDrawerVisible(false); setMessage('Las herramientas gratuitas están disponibles en el módulo de gestoría.'); }}><Text style={styles.drawerItemText}>Herramientas gratuitas</Text></Pressable>
-            <Pressable style={styles.drawerItem} onPress={() => { setDrawerVisible(false); setMessage('Consulta los servicios y planes disponibles en el inicio.'); }}><Text style={styles.drawerItemText}>Servicios y suscripciones</Text></Pressable>
+            <ScrollView style={styles.drawerMenuScroll} contentContainerStyle={styles.drawerMenuContent}>
+            <Pressable style={[styles.drawerItem, activeScreen === 'home' ? styles.drawerItemActive : null]} onPress={() => navigate('home')}><Text style={styles.drawerItemText}>Inicio</Text></Pressable>
+            <Text style={styles.drawerGroupTitle}>Gestoría</Text>
+            <Pressable style={[styles.drawerItem, activeScreen === 'appointments' ? styles.drawerItemActive : null]} onPress={() => navigate('appointments')}><Text style={styles.drawerItemText}>Citas y visitas</Text></Pressable>
+            <Pressable style={[styles.drawerItem, activeScreen === 'documents' ? styles.drawerItemActive : null]} onPress={() => navigate('documents')}><Text style={styles.drawerItemText}>Documentos</Text></Pressable>
+            <Pressable style={[styles.drawerItem, activeScreen === 'procedures' ? styles.drawerItemActive : null]} onPress={() => navigate('procedures')}><Text style={styles.drawerItemText}>Estado de trámites</Text></Pressable>
+            <Pressable style={[styles.drawerItem, activeScreen === 'labor' ? styles.drawerItemActive : null]} onPress={() => navigate('labor')}><Text style={styles.drawerItemText}>Laboral</Text></Pressable>
+            <Pressable style={[styles.drawerItem, activeScreen === 'messages' ? styles.drawerItemActive : null]} onPress={() => navigate('messages')}><Text style={styles.drawerItemText}>Mensajes</Text></Pressable>
+            <Pressable style={[styles.drawerItem, activeScreen === 'notifications' ? styles.drawerItemActive : null]} onPress={() => navigate('notifications')}><Text style={styles.drawerItemText}>Notificaciones</Text></Pressable>
+            <Pressable style={[styles.drawerItem, activeScreen === 'chatbot' ? styles.drawerItemActive : null]} onPress={() => navigate('chatbot')}><Text style={styles.drawerItemText}>Chatbot IA</Text></Pressable>
+            <Text style={styles.drawerGroupTitle}>Cuenta</Text>
+            <Pressable style={[styles.drawerItem, activeScreen === 'catalog' ? styles.drawerItemActive : null]} onPress={() => navigate('catalog')}><Text style={styles.drawerItemText}>Servicios y planes</Text></Pressable>
+            <Pressable style={[styles.drawerItem, activeScreen === 'subscriptions' ? styles.drawerItemActive : null]} onPress={() => navigate('subscriptions')}><Text style={styles.drawerItemText}>Mis suscripciones</Text></Pressable>
             <Pressable style={styles.drawerItem} onPress={openProfile}><Text style={styles.drawerItemText}>Mi perfil</Text></Pressable>
             {loggedIn ? <Pressable style={styles.drawerLogout} onPress={logout}><Text style={styles.drawerLogoutText}>Cerrar sesión</Text></Pressable> : null}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -592,10 +691,15 @@ const styles = StyleSheet.create({
   drawerUserName: { color: '#1e3a8a', fontSize: 15, fontWeight: '800' },
   drawerUserEmail: { color: '#475569', fontSize: 12, marginTop: 3 },
   drawerHint: { color: '#64748b', fontSize: 13, lineHeight: 19, marginBottom: 8 },
+  drawerMenuScroll: { flex: 1 },
+  drawerMenuContent: { paddingBottom: 12 },
+  drawerGroupTitle: { color: '#94a3b8', fontSize: 11, fontWeight: '800', letterSpacing: 1, marginTop: 10, paddingHorizontal: 12, textTransform: 'uppercase' },
   drawerItem: { borderRadius: 10, paddingVertical: 12, paddingHorizontal: 12 },
+  drawerItemActive: { backgroundColor: '#eff6ff' },
   drawerItemText: { color: '#1e293b', fontSize: 15, fontWeight: '700' },
   drawerLogout: { borderColor: '#fecaca', borderWidth: 1, borderRadius: 10, marginTop: 12, padding: 12 },
   drawerLogoutText: { color: '#b91c1c', fontSize: 15, fontWeight: '800' },
+  legacyDashboardHidden: { display: 'none' },
   container: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 24, gap: 12 },
   eyebrow: { color: '#1d4ed8', fontSize: 12, fontWeight: '700', letterSpacing: 1 },
   title: { color: '#0f172a', fontSize: 32, fontWeight: '800', marginTop: 6 },
