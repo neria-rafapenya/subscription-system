@@ -38,7 +38,12 @@ class SubscriptionCreate(BaseModel):
 class CheckoutCreate(BaseModel):
     plan_id: str
     customer_id: str = "customer-local"
-    billing_address: str = Field(min_length=5, max_length=500)
+    billing_street: str = Field(min_length=3, max_length=200)
+    billing_unit: str | None = Field(default=None, max_length=100)
+    billing_postal_code: str = Field(pattern=r"^\d{5}$")
+    billing_city: str = Field(min_length=2, max_length=100)
+    billing_province: str = Field(min_length=2, max_length=100)
+    billing_country: str = Field(default="España", min_length=2, max_length=80)
     tax_id: str = Field(min_length=3, max_length=32)
     policies_accepted: bool
 
@@ -201,7 +206,8 @@ def current_user(authorization: str | None = Header(default=None)) -> dict[str, 
     customer_id = authenticated_customer_id(authorization)
     customer = rows(
         """
-        SELECT id, name, email, billing_address, tax_id,
+        SELECT id, name, email, billing_address, billing_street, billing_unit,
+               billing_postal_code, billing_city, billing_province, billing_country, tax_id,
                policies_accepted_at, policies_version
         FROM customers WHERE id = ?
         """,
@@ -896,9 +902,15 @@ def cancel_pending_checkout(checkout_id: str, authorization: str | None = Header
 @app.post("/checkout/subscriptions", status_code=201)
 def create_subscription_checkout(payload: CheckoutCreate, authorization: str | None = Header(default=None)) -> dict:
     customer_id = authenticated_customer_id(authorization)
-    billing_address = payload.billing_address.strip()
+    billing_street = payload.billing_street.strip()
+    billing_unit = payload.billing_unit.strip() if payload.billing_unit else None
+    billing_postal_code = payload.billing_postal_code.strip()
+    billing_city = payload.billing_city.strip()
+    billing_province = payload.billing_province.strip()
+    billing_country = payload.billing_country.strip() or "España"
+    billing_address = ", ".join(filter(None, [billing_street, billing_unit, f"{billing_postal_code} {billing_city}", billing_province, billing_country]))
     tax_id = payload.tax_id.strip().upper()
-    if not billing_address:
+    if not billing_street or not billing_city or not billing_province:
         raise HTTPException(status_code=422, detail="La dirección de facturación es obligatoria")
     try:
         tax_id = normalize_spanish_person_id(tax_id)
@@ -946,18 +958,21 @@ def create_subscription_checkout(payload: CheckoutCreate, authorization: str | N
             conn.execute(
                 """
                 UPDATE customers
-                SET billing_address = ?, tax_id = ?,
+                SET billing_address = ?, billing_street = ?, billing_unit = ?,
+                    billing_postal_code = ?, billing_city = ?, billing_province = ?,
+                    billing_country = ?, tax_id = ?,
                     policies_accepted_at = ?, policies_version = ?
                 WHERE id = ?
                 """,
-                (billing_address, tax_id, policies_accepted_at, POLICIES_VERSION, customer_id),
+                (billing_address, billing_street, billing_unit, billing_postal_code, billing_city, billing_province, billing_country, tax_id, policies_accepted_at, POLICIES_VERSION, customer_id),
             )
             conn.execute(
                 """
                 INSERT INTO checkout_sessions
                     (id, customer_id, plan_id, provider, status, amount_cents, currency, interval,
-                     billing_address, tax_id, policies_accepted_at, policies_version)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     billing_address, billing_street, billing_unit, billing_postal_code, billing_city,
+                     billing_province, billing_country, tax_id, policies_accepted_at, policies_version)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     checkout_id,
@@ -969,6 +984,12 @@ def create_subscription_checkout(payload: CheckoutCreate, authorization: str | N
                     plan[0]["currency"],
                     plan[0]["interval"],
                     billing_address,
+                    billing_street,
+                    billing_unit,
+                    billing_postal_code,
+                    billing_city,
+                    billing_province,
+                    billing_country,
                     tax_id,
                     policies_accepted_at,
                     POLICIES_VERSION,

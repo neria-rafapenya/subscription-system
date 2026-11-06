@@ -73,6 +73,28 @@ export type AuthUser = {
   email: string;
 };
 
+export type BillingAddress = {
+  street: string;
+  unit: string;
+  postal_code: string;
+  city: string;
+  province: string;
+  country: string;
+};
+
+export type CustomerProfile = AuthUser & {
+  billing_address?: string | null;
+  billing_street?: string | null;
+  billing_unit?: string | null;
+  billing_postal_code?: string | null;
+  billing_city?: string | null;
+  billing_province?: string | null;
+  billing_country?: string | null;
+  tax_id?: string | null;
+  policies_accepted_at?: string | null;
+  policies_version?: string | null;
+};
+
 export type AppConfig = {
   environment: string;
   vertical_module: string;
@@ -108,6 +130,12 @@ async function errorMessage(response: Response): Promise<string> {
   if (Array.isArray(detail)) {
     const fieldNames: Record<string, string> = {
       billing_address: 'Dirección de facturación',
+      billing_street: 'Calle y número',
+      billing_unit: 'Piso / puerta',
+      billing_postal_code: 'Código postal',
+      billing_city: 'Población',
+      billing_province: 'Provincia',
+      billing_country: 'País',
       tax_id: 'DNI/NIE',
       policies_accepted: 'Políticas',
       plan_id: 'Plan',
@@ -166,6 +194,7 @@ export const api = {
     if (!response.ok) throw new Error(await errorMessage(response));
     return response.json() as Promise<{ message: string }>;
   },
+  me: () => get<CustomerProfile>('/me'),
   services: async () => {
     const services = await get<Service[]>('/services/available');
     return services.map((service) => ({
@@ -179,11 +208,11 @@ export const api = {
   pendingCheckouts: () => get<PendingCheckout[]>('/checkout/subscriptions/me'),
   notifications: () => get<Notification[]>('/notifications/me'),
   paypalConfig: () => get<PayPalConfig>('/payments/paypal/config'),
-  startSubscriptionCheckout: async (plan_id: string, billing_address: string, tax_id: string, policies_accepted: boolean) => {
+  startSubscriptionCheckout: async (plan_id: string, billing: BillingAddress, tax_id: string, policies_accepted: boolean) => {
     const response = await fetch(`${API_URL}/checkout/subscriptions`, {
       method: 'POST',
       headers: headers({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ plan_id, billing_address, tax_id, policies_accepted }),
+      body: JSON.stringify({ plan_id, billing_street: billing.street, billing_unit: billing.unit || null, billing_postal_code: billing.postal_code, billing_city: billing.city, billing_province: billing.province, billing_country: billing.country, tax_id, policies_accepted }),
     });
     if (!response.ok) {
       if (response.status === 409) {

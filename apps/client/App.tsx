@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, Image, Linking, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
-import { api, AppConfig, AuthUser, environment, Notification, PayPalConfig, PendingCheckout, Plan, Service, Subscription } from './src/api';
+import { api, AppConfig, AuthUser, BillingAddress, CustomerProfile, environment, Notification, PayPalConfig, PendingCheckout, Plan, Service, Subscription } from './src/api';
 import { getClientModule } from './src/moduleRegistry';
 import { AppDialog, AppDialogState } from './src/components/AppDialog';
 import { BrandLogo } from './src/components/BrandLogo';
@@ -11,7 +11,9 @@ import { PolicyModal } from './src/components/PolicyModal';
 import { normalizeSpanishPersonId } from './src/validation';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
-type AppScreen = 'home' | 'appointments' | 'documents' | 'procedures' | 'labor' | 'messages' | 'notifications' | 'chatbot' | 'catalog' | 'subscriptions';
+type AppScreen = 'home' | 'appointments' | 'documents' | 'procedures' | 'labor' | 'messages' | 'notifications' | 'chatbot' | 'catalog' | 'subscriptions' | 'profile';
+
+const emptyBillingAddress: BillingAddress = { street: '', unit: '', postal_code: '', city: '', province: '', country: 'España' };
 
 export default function App() {
   const [services, setServices] = useState<Service[]>([]);
@@ -38,8 +40,9 @@ export default function App() {
   const [checkoutProviderSubscriptionId, setCheckoutProviderSubscriptionId] = useState<string | null>(null);
   const [paypalConfig, setPaypalConfig] = useState<PayPalConfig | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [billingAddress, setBillingAddress] = useState('');
+  const [billingAddress, setBillingAddress] = useState<BillingAddress>(emptyBillingAddress);
   const [taxId, setTaxId] = useState('');
+  const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [policiesAccepted, setPoliciesAccepted] = useState(false);
   const [policyModalVisible, setPolicyModalVisible] = useState(false);
   const [dialog, setDialog] = useState<AppDialogState | null>(null);
@@ -54,7 +57,7 @@ export default function App() {
   const load = async () => {
     setLoading(true);
     try {
-      const [serviceData, planData, subscriptionData, pendingCheckoutData, notificationData, paypalConfigData, configData] = await Promise.all([
+      const [serviceData, planData, subscriptionData, pendingCheckoutData, notificationData, paypalConfigData, configData, profileData] = await Promise.all([
         api.services(),
         api.plans(),
         api.subscriptions(),
@@ -62,6 +65,7 @@ export default function App() {
         api.notifications(),
         api.paypalConfig(),
         api.config(),
+        api.me().catch(() => null),
       ]);
       setServices(serviceData);
       setPlans(planData);
@@ -69,6 +73,18 @@ export default function App() {
       setPendingCheckouts(pendingCheckoutData);
       setPaypalConfig(paypalConfigData);
       setAppConfig(configData);
+      setProfile(profileData);
+      if (profileData && !billingAddress.street) {
+        setBillingAddress({
+          street: profileData.billing_street ?? profileData.billing_address ?? '',
+          unit: profileData.billing_unit ?? '',
+          postal_code: profileData.billing_postal_code ?? '',
+          city: profileData.billing_city ?? '',
+          province: profileData.billing_province ?? '',
+          country: profileData.billing_country ?? 'España',
+        });
+        if (profileData.tax_id) setTaxId(profileData.tax_id);
+      }
       if (pendingCheckoutData.length > 0) {
         const pending = pendingCheckoutData[0];
         setCheckoutId(pending.id);
@@ -178,8 +194,8 @@ export default function App() {
 
   const startCheckout = async () => {
     if (!selectedPlan) return;
-    if (billingAddress.trim().length < 5) {
-      showDialog({ kind: 'warning', title: 'Dirección no válida', message: 'Introduce una dirección de facturación de al menos 5 caracteres.' });
+    if (billingAddress.street.trim().length < 3 || !/^\d{5}$/.test(billingAddress.postal_code.trim()) || billingAddress.city.trim().length < 2 || billingAddress.province.trim().length < 2) {
+      showDialog({ kind: 'warning', title: 'Dirección no válida', message: 'Completa calle y número, código postal de 5 dígitos, población y provincia.' });
       return;
     }
     if (!taxId.trim() || !policiesAccepted) {
@@ -321,7 +337,8 @@ export default function App() {
     setCheckoutProviderSubscriptionId(null);
     setPaypalConfig(null);
     setSelectedPlan(null);
-    setBillingAddress('');
+    setBillingAddress(emptyBillingAddress);
+    setProfile(null);
     setTaxId('');
     setPoliciesAccepted(false);
     setPolicyModalVisible(false);
@@ -370,7 +387,7 @@ export default function App() {
       showDialog({ kind: 'info', title: 'Perfil', message: 'Inicia sesión o crea una cuenta para consultar tu perfil.' });
       return;
     }
-    showDialog({ kind: 'info', title: 'Mi perfil', message: `${user?.name || 'Usuario'}\n${user?.email || ''}` });
+    navigate('profile');
   };
 
   const navigate = (screen: AppScreen) => {
@@ -446,7 +463,7 @@ export default function App() {
     </View> : null}
     {selectedPlan ? <View style={styles.billingCard}>
       <Text style={styles.cardTitle}>Datos de facturación</Text><Text style={styles.cardText}>Necesitamos estos datos antes de iniciar el checkout de {selectedPlan.name}.</Text>
-      <TextInput multiline numberOfLines={3} style={[styles.input, styles.multilineInput]} value={billingAddress} onChangeText={setBillingAddress} placeholder="Dirección de facturación" />
+      {renderBillingFields()}
       <TextInput autoCapitalize="characters" style={styles.input} value={taxId} onChangeText={(value) => setTaxId(value.toUpperCase())} placeholder="DNI/NIE" />
       <Pressable style={styles.policyLink} onPress={() => setPolicyModalVisible(true)}><Text style={styles.policyLinkText}>{policiesAccepted ? '✓ Políticas aceptadas · Ver de nuevo' : 'Leer y aceptar las políticas'}</Text></Pressable>
       <View style={styles.actionRow}><Pressable style={styles.button} onPress={() => void startCheckout()}><Text style={styles.buttonText}>Continuar al checkout</Text></Pressable><Pressable style={styles.secondaryButton} onPress={() => setSelectedPlan(null)}><Text style={styles.secondaryButtonText}>Cancelar</Text></Pressable></View>
@@ -462,10 +479,35 @@ export default function App() {
     {!hasUsableSubscription ? renderPlanOptions() : null}
   </>;
 
+  const renderProfile = () => <View style={styles.card}>
+    <Text style={styles.cardTitle}>Mi perfil</Text>
+    <Text style={styles.cardText}>Datos de usuario y dirección de facturación guardada para futuros pagos.</Text>
+    <Text style={styles.label}>Nombre completo</Text><TextInput editable={false} style={styles.input} value={profile?.name ?? user?.name ?? ''} />
+    <Text style={styles.label}>Correo electrónico</Text><TextInput editable={false} style={styles.input} value={profile?.email ?? user?.email ?? ''} />
+    <Text style={styles.label}>DNI/NIE</Text><TextInput editable={false} style={styles.input} value={profile?.tax_id ?? 'Todavía no informado'} />
+    <Text style={styles.cardTitle}>Dirección de facturación</Text>
+    <Text style={styles.label}>Calle y número</Text><TextInput editable={false} style={styles.input} value={profile?.billing_street ?? profile?.billing_address ?? 'Todavía no informada'} />
+    <Text style={styles.label}>Piso / puerta</Text><TextInput editable={false} style={styles.input} value={profile?.billing_unit ?? '—'} />
+    <View style={styles.addressRow}><View style={styles.addressHalf}><Text style={styles.label}>Código postal</Text><TextInput editable={false} style={styles.input} value={profile?.billing_postal_code ?? '—'} /></View><View style={styles.addressHalf}><Text style={styles.label}>Población</Text><TextInput editable={false} style={styles.input} value={profile?.billing_city ?? '—'} /></View></View>
+    <Text style={styles.label}>Provincia</Text><TextInput editable={false} style={styles.input} value={profile?.billing_province ?? '—'} />
+    <Text style={styles.label}>País</Text><TextInput editable={false} style={styles.input} value={profile?.billing_country ?? 'España'} />
+    {profile?.policies_accepted_at ? <Text style={styles.hint}>Políticas aceptadas: {profile.policies_version ?? 'v1'} · {profile.policies_accepted_at}</Text> : <Text style={styles.hint}>La dirección se completará al iniciar una suscripción.</Text>}
+  </View>;
+
+  const updateBillingField = (field: keyof BillingAddress, value: string) => setBillingAddress((current) => ({ ...current, [field]: value }));
+  const renderBillingFields = () => <>
+    <Text style={styles.label}>Calle y número *</Text><TextInput style={styles.input} value={billingAddress.street} onChangeText={(value) => updateBillingField('street', value)} placeholder="Ej. Calle Mayor, 10" />
+    <Text style={styles.label}>Piso / puerta</Text><TextInput style={styles.input} value={billingAddress.unit} onChangeText={(value) => updateBillingField('unit', value)} placeholder="Ej. 2.º A" />
+    <View style={styles.addressRow}><View style={styles.addressHalf}><Text style={styles.label}>Código postal *</Text><TextInput keyboardType="number-pad" maxLength={5} style={styles.input} value={billingAddress.postal_code} onChangeText={(value) => updateBillingField('postal_code', value.replace(/\D/g, ''))} placeholder="08001" /></View><View style={styles.addressHalf}><Text style={styles.label}>Población *</Text><TextInput style={styles.input} value={billingAddress.city} onChangeText={(value) => updateBillingField('city', value)} placeholder="Barcelona" /></View></View>
+    <Text style={styles.label}>Provincia *</Text><TextInput style={styles.input} value={billingAddress.province} onChangeText={(value) => updateBillingField('province', value)} placeholder="Barcelona" />
+    <Text style={styles.label}>País</Text><TextInput style={styles.input} value={billingAddress.country} onChangeText={(value) => updateBillingField('country', value)} placeholder="España" />
+  </>;
+
   const renderActiveDashboardScreen = () => {
     if (activeScreen === 'home') return <>{renderFreeToolsLauncher()}{!hasUsableSubscription ? renderPlanOptions() : null}{renderModule()}</>;
     if (activeScreen === 'catalog') return <>{renderCatalog()}</>;
     if (activeScreen === 'subscriptions') return <>{renderSubscriptions()}</>;
+    if (activeScreen === 'profile') return <>{renderProfile()}</>;
     return <>{renderModule()}</>;
   };
 
@@ -566,7 +608,7 @@ export default function App() {
         {selectedPlan ? <View style={styles.billingCard}>
           <Text style={styles.cardTitle}>Datos de facturación</Text>
           <Text style={styles.cardText}>Necesitamos estos datos antes de iniciar el checkout de {selectedPlan.name}.</Text>
-          <TextInput multiline numberOfLines={3} style={[styles.input, styles.multilineInput]} value={billingAddress} onChangeText={setBillingAddress} placeholder="Dirección de facturación" />
+          {renderBillingFields()}
           <TextInput autoCapitalize="characters" style={styles.input} value={taxId} onChangeText={(value) => setTaxId(value.toUpperCase())} placeholder="DNI/NIE" />
           <Pressable style={styles.policyLink} onPress={() => setPolicyModalVisible(true)}>
             <Text style={styles.policyLinkText}>{policiesAccepted ? '✓ Políticas aceptadas · Ver de nuevo' : 'Leer y aceptar las políticas'}</Text>
@@ -672,7 +714,7 @@ export default function App() {
             <Text style={styles.drawerGroupTitle}>Cuenta</Text>
             <Pressable style={[styles.drawerItem, activeScreen === 'catalog' ? styles.drawerItemActive : null]} onPress={() => navigate('catalog')}><Text style={styles.drawerItemText}>Servicios y planes</Text></Pressable>
             <Pressable style={[styles.drawerItem, activeScreen === 'subscriptions' ? styles.drawerItemActive : null]} onPress={() => navigate('subscriptions')}><Text style={styles.drawerItemText}>Mis suscripciones</Text></Pressable>
-            <Pressable style={styles.drawerItem} onPress={openProfile}><Text style={styles.drawerItemText}>Mi perfil</Text></Pressable>
+            <Pressable style={[styles.drawerItem, activeScreen === 'profile' ? styles.drawerItemActive : null]} onPress={openProfile}><Text style={styles.drawerItemText}>Mi perfil</Text></Pressable>
             {loggedIn ? <Pressable style={styles.drawerLogout} onPress={logout}><Text style={styles.drawerLogoutText}>Cerrar sesión</Text></Pressable> : null}
             </ScrollView>
             {loggedIn && appConfig?.vertical_module === 'gestoria' ? <View style={styles.drawerModuleInfo}>
@@ -757,10 +799,13 @@ const styles = StyleSheet.create({
   serviceImage: { width: '100%', height: 150, borderRadius: 10, resizeMode: 'cover' },
   attachmentLink: { color: '#1d4ed8', fontSize: 13, fontWeight: '700' },
   input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 9, paddingHorizontal: 12, paddingVertical: 11, fontSize: 15 },
+  label: { color: '#475569', fontSize: 13, fontWeight: '700', marginBottom: 5 },
   multilineInput: { minHeight: 76, textAlignVertical: 'top' },
   policyLink: { borderWidth: 1, borderColor: '#93c5fd', backgroundColor: '#eff6ff', borderRadius: 9, padding: 12 },
   policyLinkText: { color: '#1d4ed8', fontSize: 14, lineHeight: 19, fontWeight: '700' },
   actionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  addressRow: { flexDirection: 'row', gap: 10 },
+  addressHalf: { flex: 1 },
   secondaryButton: { borderWidth: 1, borderColor: '#94a3b8', borderRadius: 9, paddingVertical: 11, paddingHorizontal: 14 },
   secondaryButtonText: { color: '#475569', fontWeight: '700' },
   hint: { color: '#64748b', fontSize: 13 },
