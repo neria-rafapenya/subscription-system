@@ -8,6 +8,7 @@ under ``modules/<id>`` without changing the API, database or client core.
 from __future__ import annotations
 
 import json
+import importlib.util
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -81,3 +82,32 @@ def seed_plans() -> list[tuple[str, str, str, int, str, str, str]]:
         )
         for item in load_vertical_module()["plans"]
     ]
+
+
+def register_vertical_backend(app: Any, context: dict[str, Any]) -> None:
+    """Register the selected module's optional backend plugin.
+
+    The core only loads a plugin from the selected module directory and never
+    accepts a path supplied by a request. Modules without a plugin remain
+    manifest-only modules.
+    """
+    manifest = load_vertical_module()
+    plugin_relative_path = manifest.get("backend_plugin", "backend/plugin.py")
+    if not isinstance(plugin_relative_path, str):
+        raise RuntimeError("backend_plugin debe ser una ruta relativa")
+    module_directory = _module_directory(vertical_module_id())
+    plugin_path = (module_directory / plugin_relative_path).resolve()
+    if module_directory not in plugin_path.parents or plugin_path.name != "plugin.py":
+        raise RuntimeError("El plugin backend queda fuera del directorio del módulo")
+    if not plugin_path.is_file():
+        return
+    module_name = f"subscription_vertical_{vertical_module_id()}_backend"
+    spec = importlib.util.spec_from_file_location(module_name, plugin_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"No se puede cargar el plugin backend de '{vertical_module_id()}'")
+    plugin = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(plugin)
+    register = getattr(plugin, "register", None)
+    if not callable(register):
+        raise RuntimeError(f"El plugin backend de '{vertical_module_id()}' debe exponer register(app, context)")
+    register(app, context)

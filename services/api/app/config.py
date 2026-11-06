@@ -24,6 +24,7 @@ class Settings:
         self.local_auth_enabled = os.getenv("LOCAL_AUTH_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
         self.payment_provider = os.getenv("PAYMENT_PROVIDER", "local")
         self.vertical_module = os.getenv("APP_VERTICAL_MODULE", "maintenance")
+        self.backoffice_admin_token = os.getenv("BACKOFFICE_ADMIN_TOKEN", "")
         self.aws_region = os.getenv("AWS_REGION")
         self.secrets_manager_secret_name = os.getenv("SECRETS_MANAGER_SECRET_NAME")
         self.secrets_manager_enabled = os.getenv("SECRETS_MANAGER_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
@@ -33,6 +34,8 @@ class Settings:
         env_file = REPOSITORY_ROOT / ".env"
         if env_file.exists():
             self._load_local_env(env_file)
+        if not self.backoffice_admin_token and self.app_env == AppEnvironment.DEVELOPMENT:
+            self.backoffice_admin_token = "local-backoffice-demo"
 
     def _load_local_env(self, env_file: Path) -> None:
         """Load simple KEY=VALUE pairs without adding a dotenv dependency."""
@@ -57,6 +60,7 @@ class Settings:
         self.local_auth_enabled = values.get("LOCAL_AUTH_ENABLED", str(self.local_auth_enabled)).lower() in {"1", "true", "yes", "on"}
         self.payment_provider = values.get("PAYMENT_PROVIDER", self.payment_provider)
         self.vertical_module = values.get("APP_VERTICAL_MODULE", self.vertical_module)
+        self.backoffice_admin_token = values.get("BACKOFFICE_ADMIN_TOKEN", self.backoffice_admin_token)
         self.aws_region = values.get("AWS_REGION", self.aws_region)
         self.secrets_manager_secret_name = values.get("SECRETS_MANAGER_SECRET_NAME", self.secrets_manager_secret_name)
         self.secrets_manager_enabled = values.get("SECRETS_MANAGER_ENABLED", str(self.secrets_manager_enabled)).lower() in {"1", "true", "yes", "on"}

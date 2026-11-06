@@ -120,6 +120,7 @@ async function errorMessage(response: Response): Promise<string> {
 
 export const api = {
   setAccessToken: (token: string | null) => { accessToken = token; },
+  getAccessToken: () => accessToken,
   logout: () => { accessToken = null; },
   config: () => get<AppConfig>('/config'),
   login: async (email: string, password: string) => {

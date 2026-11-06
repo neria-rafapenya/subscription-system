@@ -23,7 +23,7 @@ from .security import (
 from .storage import delete_storage_key, public_file_url, save_service_upload
 from .paypal import PayPalAPIError, PayPalConfigurationError, cancel_subscription as paypal_cancel_subscription, create_subscription as paypal_create_subscription, get_subscription as paypal_get_subscription, paypal_settings, plan_id_for_tier
 from .validation import normalize_spanish_person_id
-from .vertical_module import vertical_description, vertical_display_name, vertical_module_id
+from .vertical_module import register_vertical_backend, vertical_description, vertical_display_name, vertical_module_id
 
 
 settings = get_settings()
@@ -181,6 +181,16 @@ def authenticated_customer_id(authorization: str | None, fallback: str | None = 
     if fallback:
         return fallback
     raise HTTPException(status_code=401, detail="Se requiere una sesión válida")
+
+
+register_vertical_backend(
+    app,
+    {
+        "connection": connection,
+        "authenticated_customer_id": authenticated_customer_id,
+        "settings": settings,
+    },
+)
 
 
 @app.get("/me")

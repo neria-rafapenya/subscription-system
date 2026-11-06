@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Swal from 'sweetalert2';
 import './styles.css';
+import { getModuleBackoffice } from './moduleRegistry';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -206,6 +207,8 @@ function App() {
     }
   };
 
+  const ModuleBackoffice = config?.vertical_module ? getModuleBackoffice(config.vertical_module) : null;
+
   return (
     <main className="layout">
       <header className="header">
@@ -227,6 +230,8 @@ function App() {
         </article>
 
       </section>
+
+      {ModuleBackoffice ? <ModuleBackoffice apiUrl={API_URL} /> : null}
 
       <section className="panel">
         <div className="section-heading"><div><h2>Clientes</h2><p className="muted">Gestión de los usuarios del cliente administrador.</p></div><span className="tag">{customerTotal} clientes</span></div>

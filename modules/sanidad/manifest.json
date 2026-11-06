@@ -1,0 +1,20 @@
+{
+  "id": "sanidad",
+  "module_version": "1.0.0",
+  "display_name": "Sanidad",
+  "description": "Citas, documentos, informes, mensajes y seguimiento sanitario.",
+  "backend_plugin": "backend/plugin.py",
+  "client_extension": "client/SanidadExtension.tsx",
+  "backoffice_extension": "backoffice/index.jsx",
+  "services": [
+    { "id": "sanidad-documentos", "name": "Documentación sanitaria", "description": "Subida y consulta segura de documentos sanitarios.", "minimum_tier": "basic" },
+    { "id": "sanidad-citas", "name": "Citas y visitas", "description": "Concertación de citas presenciales, telefónicas o por videollamada.", "minimum_tier": "basic" },
+    { "id": "sanidad-informes", "name": "Diagnósticos e informes", "description": "Consulta de informes emitidos por profesionales autorizados.", "minimum_tier": "basic" },
+    { "id": "sanidad-mensajes", "name": "Mensajes y avisos", "description": "Comunicación y notificaciones relacionadas con la atención.", "minimum_tier": "basic" },
+    { "id": "sanidad-chatbot", "name": "Asistente sanitario", "description": "Chatbot preparado para una futura integración con un proveedor de IA.", "minimum_tier": "premium" }
+  ],
+  "plans": [
+    { "id": "sanidad-basic", "name": "Sanidad Básica", "description": "Citas, documentación, informes y mensajes.", "amount_cents": 4900, "currency": "EUR", "interval": "month", "tier": "basic" },
+    { "id": "sanidad-premium", "name": "Sanidad Premium", "description": "Incluye los servicios básicos y el asistente sanitario.", "amount_cents": 9900, "currency": "EUR", "interval": "month", "tier": "premium" }
+  ]
+}

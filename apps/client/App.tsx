@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, AppState, Image, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, Image, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 import { api, AppConfig, AuthUser, environment, Notification, PayPalConfig, PendingCheckout, Plan, Service, Subscription } from './src/api';
+import { getClientModule } from './src/moduleRegistry';
 import { AppDialog, AppDialogState } from './src/components/AppDialog';
 import { PayPalSubscriptionCheckout } from './src/components/PayPalSubscriptionCheckout';
 import { PolicyModal } from './src/components/PolicyModal';
@@ -207,6 +208,7 @@ export default function App() {
 
   const hasCurrentSubscription = subscriptions.some((subscription) => ['pending', 'active', 'grace_period', 'suspended'].includes(subscription.status));
   const hasOpenCheckout = pendingCheckouts.length > 0 || Boolean(checkoutId);
+  const ModuleExtension = getClientModule(appConfig?.vertical_module);
 
   const registerPayPalSubscription = async (providerSubscriptionId: string) => {
     if (!checkoutId) return;
@@ -438,6 +440,8 @@ export default function App() {
             <Text style={styles.cardText}>{notification.body}</Text>
           </View>)}
         </> : null}
+
+        {ModuleExtension ? <ModuleExtension accessToken={api.getAccessToken()} ui={{ Text, TextInput, TouchableOpacity, View }} /> : null}
 
         <Text style={styles.sectionTitle}>Servicios disponibles</Text>
         {services.map((service) => (

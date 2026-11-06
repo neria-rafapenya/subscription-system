@@ -2,6 +2,12 @@ const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
+config.watchFolders = [...(config.watchFolders || []), path.resolve(__dirname, '../../modules')];
+config.resolver.extraNodeModules = {
+  ...(config.resolver.extraNodeModules || {}),
+  '@babel/runtime': path.resolve(__dirname, 'node_modules/@babel/runtime'),
+  react: path.resolve(__dirname, 'node_modules/react'),
+};
 const defaultResolveRequest = config.resolver.resolveRequest;
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
