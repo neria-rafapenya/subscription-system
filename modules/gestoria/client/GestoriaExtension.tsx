@@ -87,10 +87,20 @@ const freeStyles = {
   result: { color: '#115e59', fontSize: 13, fontWeight: '700' },
   calendarItem: { backgroundColor: '#fff', borderRadius: 8, color: '#134e4a', padding: 9 },
   disclaimer: { color: '#64748b', fontSize: 11, lineHeight: 16 },
+  sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15, 23, 42, .42)' },
+  sheetBackdrop: { flex: 1 },
+  sheet: { maxHeight: '88%', backgroundColor: '#f8fafc', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 16, shadowColor: '#0f172a', shadowOpacity: .25, shadowRadius: 18, shadowOffset: { width: 0, height: -6 }, elevation: 12 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingBottom: 12, gap: 10 },
+  sheetHeaderCopy: { flex: 1, gap: 2 },
+  sheetTitle: { color: '#0f172a', fontSize: 20, fontWeight: '800' },
+  sheetHint: { color: '#64748b', fontSize: 12 },
+  closeButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e2e8f0' },
+  closeButtonText: { color: '#475569', fontSize: 26, lineHeight: 28 },
+  sheetScroll: { paddingHorizontal: 18, paddingBottom: 28 },
 };
 
-export default function GestoriaExtension({ accessToken, ui }: { accessToken: string | null; ui: Record<string, any> }) {
-  const { Text, TextInput, TouchableOpacity, View } = ui;
+export default function GestoriaExtension({ accessToken, ui, showFreeTools = false, onCloseFreeTools }: { accessToken: string | null; ui: Record<string, any>; showFreeTools?: boolean; onCloseFreeTools?: () => void }) {
+  const { Modal, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } = ui;
   const [advisors, setAdvisors] = useState<Advisor[]>([]);
   const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -231,7 +241,18 @@ export default function GestoriaExtension({ accessToken, ui }: { accessToken: st
   };
 
   return <View style={styles.container}>
-    <FreeTools ui={ui} />
+    <Modal transparent visible={showFreeTools} animationType="slide" onRequestClose={onCloseFreeTools}>
+      <View style={freeStyles.sheetOverlay}>
+        <Pressable style={freeStyles.sheetBackdrop} onPress={onCloseFreeTools} />
+        <View style={freeStyles.sheet}>
+          <View style={freeStyles.sheetHeader}>
+            <View style={freeStyles.sheetHeaderCopy}><Text style={freeStyles.sheetTitle}>Herramientas gratuitas</Text><Text style={freeStyles.sheetHint}>Orientativas y disponibles sin suscripción.</Text></View>
+            <TouchableOpacity accessibilityLabel="Cerrar herramientas gratuitas" style={freeStyles.closeButton} onPress={onCloseFreeTools}><Text style={freeStyles.closeButtonText}>×</Text></TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={freeStyles.sheetScroll}><FreeTools ui={ui} /></ScrollView>
+        </View>
+      </View>
+    </Modal>
     <Text style={styles.title}>Módulo Gestoría</Text>
     <Text style={styles.subtitle}>Servicios de documentación, citas, mensajería y asistencia.</Text>
     {moduleStatus ? <Text style={styles.planHint}>Plan {moduleStatus.tier === 'premium' ? 'Premium' : 'Básico'} · documentos de hasta {moduleStatus.document_limit_label} · agenda: {moduleStatus.scheduler_provider} · ERP: {moduleStatus.erp_provider}</Text> : null}

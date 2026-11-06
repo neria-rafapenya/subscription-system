@@ -4,6 +4,8 @@ import GestoriaExtension from '../../../modules/gestoria/client/GestoriaExtensio
 export type ClientModuleProps = {
   accessToken: string | null;
   ui: Record<string, any>;
+  showFreeTools?: boolean;
+  onCloseFreeTools?: () => void;
 };
 
 type ClientModule = (props: ClientModuleProps) => JSX.Element;

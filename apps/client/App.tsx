@@ -44,6 +44,7 @@ export default function App() {
   const [dialog, setDialog] = useState<AppDialogState | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [freeToolsVisible, setFreeToolsVisible] = useState(false);
 
   const showDialog = (nextDialog: AppDialogState) => setDialog(nextDialog);
 
@@ -315,6 +316,7 @@ export default function App() {
     setPoliciesAccepted(false);
     setPolicyModalVisible(false);
     setDrawerVisible(false);
+    setFreeToolsVisible(false);
     setAuthMode('login');
     setMessage('Sesión cerrada.');
   };
@@ -383,7 +385,6 @@ export default function App() {
         <Text style={styles.eyebrow}>SUBSCRIPTION SYSTEM · {environment.toUpperCase()}</Text>
         <View style={styles.topRow}>
           <Text style={styles.title}>{loggedIn ? `Hola, ${user?.name || 'usuario'}` : 'Acceso a la aplicación'}</Text>
-          {loggedIn ? <Pressable style={styles.logoutButton} onPress={logout}><Text style={styles.logoutButtonText}>Cerrar sesión</Text></Pressable> : null}
         </View>
         <Text style={styles.subtitle}>{appConfig?.vertical_display_name ? `${appConfig.vertical_display_name} · ` : ''}{loggedIn ? (appConfig?.vertical_description || 'Servicios y suscripciones.') : 'Puedes crear una cuenta sin contratar ninguna suscripción.'}</Text>
 
@@ -472,7 +473,17 @@ export default function App() {
           </View>)}
         </> : null}
 
-        {ModuleExtension ? <ModuleExtension accessToken={api.getAccessToken()} ui={{ Text, TextInput, TouchableOpacity, View }} /> : null}
+        {loggedIn && appConfig?.vertical_module === 'gestoria' ? <View style={styles.freeToolsLauncher}>
+          <View style={styles.freeToolsLauncherCopy}>
+            <Text style={styles.freeToolsLauncherTitle}>Herramientas gratuitas</Text>
+            <Text style={styles.freeToolsLauncherText}>Calculadoras y calendario fiscal orientativo, sin suscripción.</Text>
+          </View>
+          <Pressable accessibilityLabel="Abrir herramientas gratuitas" style={styles.freeToolsLauncherButton} onPress={() => setFreeToolsVisible(true)}>
+            <Text style={styles.freeToolsLauncherIcon}>🧮</Text>
+          </Pressable>
+        </View> : null}
+
+        {ModuleExtension ? <ModuleExtension accessToken={api.getAccessToken()} showFreeTools={freeToolsVisible} onCloseFreeTools={() => setFreeToolsVisible(false)} ui={{ Text, TextInput, TouchableOpacity, View, Modal, Pressable, ScrollView }} /> : null}
 
         <Text style={styles.sectionTitle}>Servicios disponibles</Text>
         {services.map((service) => (
@@ -612,7 +623,11 @@ const styles = StyleSheet.create({
   buttonDisabled: { backgroundColor: '#94a3b8' },
   cancelButton: { borderColor: '#dc2626', borderWidth: 1, borderRadius: 9, paddingVertical: 8, paddingHorizontal: 12 },
   cancelButtonText: { color: '#b91c1c', fontWeight: '700' },
-  logoutButton: { borderColor: '#64748b', borderWidth: 1, borderRadius: 9, paddingVertical: 8, paddingHorizontal: 12 },
-  logoutButtonText: { color: '#475569', fontWeight: '700' },
+  freeToolsLauncher: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ecfeff', borderColor: '#99f6e4', borderWidth: 1, borderRadius: 14, padding: 14, gap: 12 },
+  freeToolsLauncherCopy: { flex: 1, gap: 3 },
+  freeToolsLauncherTitle: { color: '#134e4a', fontSize: 16, fontWeight: '800' },
+  freeToolsLauncherText: { color: '#475569', fontSize: 13, lineHeight: 18 },
+  freeToolsLauncherButton: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f766e' },
+  freeToolsLauncherIcon: { fontSize: 26 },
   empty: { color: '#64748b' },
 });
