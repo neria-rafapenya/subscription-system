@@ -448,8 +448,7 @@ export default function App() {
     if (activeScreen === 'home') return <>{renderFreeToolsLauncher()}{renderModule()}</>;
     if (activeScreen === 'catalog') return <>{renderCatalog()}</>;
     if (activeScreen === 'subscriptions') return <>{renderSubscriptions()}</>;
-    const titles: Record<string, string> = { appointments: 'Citas y visitas', documents: 'Documentos', procedures: 'Estado de trámites', labor: 'Laboral (incidencias y nóminas)', messages: 'Mensajes', notifications: 'Notificaciones', chatbot: 'Chatbot IA' };
-    return <><Text style={styles.sectionTitle}>{titles[activeScreen]}</Text>{renderModule()}</>;
+    return <>{renderModule()}</>;
   };
 
   return (
